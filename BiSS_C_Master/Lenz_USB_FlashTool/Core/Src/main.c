@@ -111,12 +111,10 @@ int main(void)
   // MX_ADC1_Init();
   // MX_TIM3_Init();
   // MX_USART2_UART_Init();
-  
-	/* USER CODE BEGIN 2 */
-//	UART_Config();
+  /* USER CODE BEGIN 2 */
+	UART_Config();
 	Current_Sensor_Init();
 	BiSS_C_Master_HAL_Init();
-	UART_Config();
 	
   /* USER CODE END 2 */
 
@@ -606,7 +604,7 @@ static void MX_TIM7_Init(void)
 {
 
   /* USER CODE BEGIN TIM7_Init 0 */
-//	__enable_irq();
+	__enable_irq();
   /* USER CODE END TIM7_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
@@ -663,8 +661,8 @@ static void MX_DMA_Init(void)
   NVIC_SetPriority(DMA1_Channel5_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 	/* DMA1_Channel6_IRQn interrupt configuration */
-//  NVIC_SetPriority(DMA1_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-//  NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  NVIC_SetPriority(DMA1_Channel6_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMA2_Channel1_IRQn interrupt configuration */
   NVIC_SetPriority(DMA2_Channel1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(DMA2_Channel1_IRQn);

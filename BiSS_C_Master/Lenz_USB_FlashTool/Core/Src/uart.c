@@ -39,6 +39,22 @@
 const uint16_t error_biss_cmd = 0xDE;
 const uint16_t error_uart_cmd = 0xEF;
 
+static void EncoderPowerEnable(void){
+	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
+}
+
+static void EncoderPowerDisable(void){
+	LL_GPIO_ResetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
+}
+
+static void EncoderSecondPowerEnable(void){
+	LL_GPIO_SetOutputPin(PWR2_EN_PIN);
+}
+
+static void EncoderSecondPowerDisable(void){
+	LL_GPIO_ResetOutputPin(PWR2_EN_PIN);
+}
+
 typedef enum{
 	UART_STATE_IDLE,
 	UART_STATE_RECEIVE,
@@ -202,15 +218,15 @@ void UART_StateMachine(void) {
 		uint8_t calculated_crc;
     uint32_t new_cnt;
 
-//		if(IsBiSSReqBusy() == BISS_FAULT) {
-//			cnt_error_cycles++;
-//			if (cnt_error_cycles == BISS_ABORT_CNT_CYCLES) {
-//				cnt_error_cycles = 0;
-//				UART_Error = UART_ERROR_BISS;
-//				UART_State = UART_STATE_ABORT;
-//				BiSSResetExternalState();
-//			}
-//		}
+		if(IsBiSSReqBusy() == BISS_FAULT) {
+			cnt_error_cycles++;
+			if (cnt_error_cycles == BISS_ABORT_CNT_CYCLES) {
+				cnt_error_cycles = 0;
+				UART_Error = UART_ERROR_BISS;
+				UART_State = UART_STATE_ABORT;
+				BiSSResetExternalState();
+			}
+		}
 	
 		if(IsBiSSReqBusy() ==	BISS_READ_FINISHED) {
 				UART_Transmit(&UART_TX);
@@ -458,41 +474,31 @@ void UART_StateMachine(void) {
 											queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 											queue_cnt--;
 											retry_cnt = 0;
-										
-									// DEBUG // 
+									
 										} else {
 											retry_cnt++;
-											if (retry_cnt >= MAX_RETRY){
-												UART_Error = UART_ERROR_BISS_WRITE_FAULT;
+											if (retry_cnt >= MAX_RETRY) {
+												if(BiSSGetFaultState() == BISS_NO_FAULTS) {
+													UART_State = UART_STATE_IDLE;
+													retry_cnt = 0;
+												} else {
+													UART_Error = UART_ERROR_BISS;
+													UART_State = UART_STATE_ABORT;
+													queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+													queue_cnt--;
+													retry_cnt = 0;
+												}
+											}
+										}
+									} else {
+											if(BiSSGetFaultState() != BISS_NO_FAULTS) {
+												UART_Error = UART_ERROR_BISS;
 												UART_State = UART_STATE_ABORT;
+												queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+												queue_cnt--;
 												retry_cnt = 0;
 											}
 										}
-									}
-									// DEBUG // 
-									
-//											if (retry_cnt >= MAX_RETRY) {
-//												if(BiSSGetFaultState() == BISS_NO_FAULTS) {
-//													UART_State = UART_STATE_IDLE;
-//													retry_cnt = 0;
-//												} else {
-//													UART_Error = UART_ERROR_BISS;
-//													UART_State = UART_STATE_ABORT;
-//													queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//													queue_cnt--;
-//													retry_cnt = 0;
-//												}
-//											}
-										
-//									} else {
-//										if(BiSSGetFaultState() != BISS_NO_FAULTS) {
-//											UART_Error = UART_ERROR_BISS;
-//											UART_State = UART_STATE_ABORT;
-//											queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//											queue_cnt--;
-//											retry_cnt = 0;
-//										}
-//									}
 									break;
 
 								case UART_COMMAND_READ_REG:
@@ -509,40 +515,32 @@ void UART_StateMachine(void) {
 												queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 												queue_cnt--;
 												retry_cnt = 0;
-												
-										// DEBUG // 
+											
 											} else {
-												UART_Error = UART_ERROR_BISS_READ_FAULT;
+												retry_cnt++;
+												if (retry_cnt >= MAX_RETRY) {
+													if(BiSSGetFaultState() == BISS_NO_FAULTS) {
+														UART_State = UART_STATE_IDLE;
+														retry_cnt = 0;
+													} else {
+														UART_Error = UART_ERROR_BISS;
+														UART_State = UART_STATE_ABORT;
+														queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+														queue_cnt--;
+														retry_cnt = 0;
+													}
+												}
+												// UART_State = UART_STATE_ABORT;
+											}
+										} else {
+											if(BiSSGetFaultState() != BISS_NO_FAULTS) {
+												UART_Error = UART_ERROR_BISS;
 												UART_State = UART_STATE_ABORT;
+												queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+												queue_cnt--;
+												retry_cnt = 0;
 											}
 										}
-										// DEBUG // 
-										
-//											} else {
-//												retry_cnt++;
-//												if (retry_cnt >= MAX_RETRY) {
-//													if(BiSSGetFaultState() == BISS_NO_FAULTS) {
-//														UART_State = UART_STATE_IDLE;
-//														retry_cnt = 0;
-//													} else {
-//														UART_Error = UART_ERROR_BISS;
-//														UART_State = UART_STATE_ABORT;
-//														queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//														queue_cnt--;
-//														retry_cnt = 0;
-//													}
-//												}
-//												// UART_State = UART_STATE_ABORT;
-//											}
-//										} else {
-//											if(BiSSGetFaultState() != BISS_NO_FAULTS) {
-//												UART_Error = UART_ERROR_BISS;
-//												UART_State = UART_STATE_ABORT;
-//												queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//												queue_cnt--;
-//												retry_cnt = 0;
-//											}
-//										}
 									break;
 													
 								case UART_COMMAND_WRITE_READ_ENC_USART2:

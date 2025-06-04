@@ -102,11 +102,6 @@ void Change_Current_Sensor_Mode(Current_Sensor_Mode_t New_Mode);
 
 void USART2_Write_Read_IRS(uint8_t* txData, uint8_t* rxData, uint8_t data_len);
 
-void EncoderPowerEnable(void);
-void EncoderPowerDisable(void);
-void EncoderSecondPowerEnable(void);
-void EncoderSecondPowerDisable(void);
-
 int32_t Read_Current_Enc2(void);
 
 #ifdef __cplusplus
