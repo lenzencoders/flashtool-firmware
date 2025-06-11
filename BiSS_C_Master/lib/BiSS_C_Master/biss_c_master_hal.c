@@ -251,8 +251,11 @@ static void BiSS2_SPI_CDM_Req(void){
 void BissRequest_CDM(void){
 	switch(Current_Mode){
 		case BISS_MODE_SPI_SPI:
-			BiSS1_SPI_CDM_Req();
-			BiSS2_SPI_CDM_Req();
+			if (BiSS_SPI_Ch == BISS_SPI_CH_1){
+				BiSS1_SPI_CDM_Req();
+			} else if (BiSS_SPI_Ch == BISS_SPI_CH_2){
+				BiSS2_SPI_CDM_Req();
+			}
 			break;
 		case BISS_MODE_AB_UART:
 			LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
