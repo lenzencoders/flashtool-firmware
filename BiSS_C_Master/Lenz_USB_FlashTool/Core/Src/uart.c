@@ -754,9 +754,9 @@ void UART_StateMachine(void) {
 								ReadingStrEnc2.AngleFIFO[ReadingStrEnc2.FIFO_current_ptr] = angle_data2;
 								ReadingStrEnc2.FIFO_current_ptr++;
 								
-								if((((uint16_t)ReadingStrEnc1.FIFO_current_ptr + 256 - ReadingStrEnc1.FIFO_start_ptr) & 0xFFU) >= UART_ANGLE_TWO_ENC_LEN) {
+								if((((uint16_t)ReadingStrEnc2.FIFO_current_ptr + 256 - ReadingStrEnc2.FIFO_start_ptr) & 0xFFU) >= UART_ANGLE_TWO_ENC_LEN) {
 									uint8_t TxBufCnt = 0;
-									while(ReadingStrEnc1.FIFO_start_ptr != ReadingStrEnc1.FIFO_current_ptr) {
+									while(ReadingStrEnc2.FIFO_start_ptr != ReadingStrEnc2.FIFO_current_ptr) {
 										*((AngleData_t*)&UART_TX.Buf[TxBufCnt]) = ReadingStrEnc1.AngleFIFO[ReadingStrEnc1.FIFO_start_ptr];
 										TxBufCnt += 4;
 										*((AngleData_t*)&UART_TX.Buf[TxBufCnt]) = ReadingStrEnc2.AngleFIFO[ReadingStrEnc2.FIFO_start_ptr];
@@ -766,8 +766,8 @@ void UART_StateMachine(void) {
 									}
 									ReadingStrEnc1.len--; 
 									ReadingStrEnc2.len--; 
-									UART_TX.adr_h = (ReadingStrEnc1.len >> 8U) & 0xFFU;
-									UART_TX.adr_l = ReadingStrEnc1.len & 0xFFU;
+									UART_TX.adr_h = (ReadingStrEnc2.len >> 8U) & 0xFFU;
+									UART_TX.adr_l = ReadingStrEnc2.len & 0xFFU;
 									UART_Transmit(&UART_TX);
 								}
 							}
