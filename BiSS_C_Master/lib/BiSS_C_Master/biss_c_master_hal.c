@@ -97,9 +97,9 @@ SPI_rx_t BiSS1_SPI_rx;
 SPI_rx_t BiSS2_SPI_rx;
 USART_rx_t USART_rx;
 
-volatile BISS_Mode_t Current_Mode = BISS_MODE_DEFAULT_SPI; // BISS_MODE_SPI_SPI or BISS_MODE_AB_UART or BISS_MODE_SPI_UART_IRS or BISS_MODE_AB_SPI or BISS_MODE_DEFAULT_SPI
+volatile BISS_Mode_t Current_Mode = BISS_MODE_SPI_SPI; // BISS_MODE_SPI_SPI or BISS_MODE_AB_UART or BISS_MODE_SPI_UART_IRS or BISS_MODE_AB_SPI or BISS_MODE_DEFAULT_SPI
 volatile BiSS_SPI_Ch_t BiSS_SPI_Ch = BISS_SPI_CH_2; // BISS_SPI_CH_1 or BISS_SPI_CH_2
-volatile CH1_SSI_t CH1_SSI = CH1_SSI_FULL_FREQ;
+volatile CH1_SPI_mode_t CH1_SPI_MODE = CH1_LIR_BISS_21B;
 volatile Current_Sensor_Mode_t Current_Sensor_Mode = CURRENT_SENSOR_MODE_ENABLE; // CURRENT_SENSOR_MODE_ENABLE CURRENT_SENSOR_MODE_DISABLE
 volatile PinDef PWR1_EN_PIN = {GPIOA, LL_GPIO_PIN_8};
 
@@ -192,17 +192,25 @@ static void BiSS1_SPI_nCDM_Req(void){
 	LL_SPI_DeInit(BISS1_SPI);
 	BISS1_SPI->CR1 = SPI_CR1_BISS_nCDM;
 	BISS1_SPI->CR2 = SPI_CR2_BISS_CFG;
-	// #ifdef CH1_SSI
-	if(CH1_SSI == CH1_SSI_HALF_FREQ){
-		LL_SPI_SetBaudRatePrescaler(BISS1_SPI, LL_SPI_BAUDRATEPRESCALER_DIV128);
-		LL_DMA_SetDataLength(DMA_BISS1_TX, 3U); 
-		LL_DMA_SetDataLength(DMA_BISS1_RX, 3U); 
-	} 
-	else if(CH1_SSI == CH1_SSI_FULL_FREQ){
-		// #else
-		LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
-		LL_DMA_SetDataLength(DMA_BISS1_RX, 5U); // TODO try 1U via define
-		// #endif
+	// #ifdef CH1_SPI_MODE
+	switch(CH1_SPI_MODE){
+		case CH1_LIR_SSI:
+			LL_SPI_SetBaudRatePrescaler(BISS1_SPI, LL_SPI_BAUDRATEPRESCALER_DIV128);
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3U); 
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3U); 
+			break;
+		case CH1_LENZ_BISS:
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5U); // TODO try 1U via define
+			break;
+		case CH1_LIR_BISS_21B:
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 8U); // TODO try 1U via define
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 8U); // TODO try 1U via define
+			break;
+		default: 
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5U); // TODO try 1U via define
+		break;
 	}
 	LL_DMA_EnableChannel(DMA_BISS1_TX);	 
 	LL_DMA_EnableChannel(DMA_BISS1_RX);		
@@ -315,47 +323,92 @@ void BISS_Task_IRQHandler(void) {
 	LL_TIM_ClearFlag_UPDATE(BISS_Task_TIM);
 	switch(Current_Mode){
 		case BISS_MODE_SPI_SPI:
-			if(CH1_SSI == CH1_SSI_HALF_FREQ){
-				// #ifdef CH1_SSI
-				(void) BiSS1_SPI_rx;
-				uint32_t rev_temp = __REV(*(uint32_t *)&BiSS1_SPI_rx.buf[0]);		
-				if((rev_temp & 0xC00000) == 0x400000){
-					CRC6_State1 = CRC6_OK;
-					LED1TurnGreen();
-					AngleData1.angle_data = (rev_temp << 2) & 0xFFFF80;
-					AngleData1.time_of_life_counter++;
-				}
-				else{
-					LED1TurnRed();
-					CRC6_State1 = CRC6_FAULT;
-				}
-				if(SSI_HALF_FREQ_FLAG > 0){
-					SSI_HALF_FREQ_FLAG = 0;
-					BiSS1_SPI_nCDM_Req();
-				}
-				else{
-					SSI_HALF_FREQ_FLAG = 1;
-				}
-			}
-			else if(CH1_SSI == CH1_SSI_FULL_FREQ){
-				// #else
-				BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
-				if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
-					CRC6_State1 = CRC6_OK;
-					AngleData1.angle_data = BISS1_SCD >> 8;
-					AngleData1.time_of_life_counter++;
-					if(((BISS1_SCD >> 6) & 0x3) == 0x3){
+			switch(CH1_SPI_MODE){
+				case CH1_LIR_SSI:
+					(void) BiSS1_SPI_rx;
+					uint32_t rev_temp = __REV(*(uint32_t *)&BiSS1_SPI_rx.buf[0]);		
+					if((rev_temp & 0xC00000) == 0x400000){
+						CRC6_State1 = CRC6_OK;
 						LED1TurnGreen();
+						AngleData1.angle_data = (rev_temp << 2) & 0xFFFF80;
+						AngleData1.time_of_life_counter++;
 					}
 					else{
 						LED1TurnRed();
+						CRC6_State1 = CRC6_FAULT;
 					}
-				}
-				else{
-					LED1TurnRed();
-					CRC6_State1 = CRC6_FAULT;
-				}
-				// #endif
+					if(SSI_HALF_FREQ_FLAG > 0){
+						SSI_HALF_FREQ_FLAG = 0;
+						BiSS1_SPI_nCDM_Req();
+					}
+					else{
+						SSI_HALF_FREQ_FLAG = 1;
+					}
+					break;
+				case CH1_LENZ_BISS:
+					BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
+					if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
+						CRC6_State1 = CRC6_OK;
+						AngleData1.angle_data = BISS1_SCD >> 8;
+						AngleData1.time_of_life_counter++;
+						if(((BISS1_SCD >> 6) & 0x3) == 0x3){
+							LED1TurnGreen();
+						}
+						else{
+							LED1TurnRed();
+						}
+					}
+					else{
+						LED1TurnRed();
+						CRC6_State1 = CRC6_FAULT;
+					}
+					break;
+				case CH1_LIR_BISS_21B:
+					(void) BiSS1_SPI_rx;
+					uint64_t TempBissRaw;
+					uint8_t MS_byte;
+					((uint32_t*)&TempBissRaw)[0] = __REV(((uint32_t*)&BiSS1_SPI_rx.buf)[1]);
+					MS_byte = (((uint32_t*)&TempBissRaw)[1] = __REV(((uint32_t*)&BiSS1_SPI_rx.buf)[0]) ) >> 3;
+					switch(MS_byte){
+						case 1: 
+							BISS1_SCD = (TempBissRaw >> 5) & 0x1FFFFFFFU;
+							break;
+						case 2: 
+							BISS1_SCD = (TempBissRaw >> 6) & 0x1FFFFFFFU;
+							break;
+						case 4: 
+						case 5: 
+							BISS1_SCD = (TempBissRaw >> 7) & 0x1FFFFFFFU;
+							break;
+						default: 
+							BISS1_SCD = 0;
+						break;
+					}
+					//BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
+					if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
+						CRC6_State1 = CRC6_OK;
+						AngleData1.angle_data = BISS1_SCD >> 8;
+						AngleData1.time_of_life_counter++;
+						if(((BISS1_SCD >> 6) & 0x3) == 0x3){
+							LED1TurnGreen();
+						}
+						else{
+							LED1TurnRed();
+						}
+					}
+					else{
+						LED1TurnRed();
+						CRC6_State1 = CRC6_FAULT;
+					}
+					
+					if(SSI_HALF_FREQ_FLAG > 0){
+						SSI_HALF_FREQ_FLAG = 0;
+						BiSS1_SPI_nCDM_Req();
+					}
+					else{
+						SSI_HALF_FREQ_FLAG = 1;
+					}
+					break;
 			}
 			
 			BISS2_SCD = __REV(BiSS2_SPI_rx.revSCD);
@@ -376,7 +429,7 @@ void BISS_Task_IRQHandler(void) {
 			}					
 			switch(BiSS_SPI_Ch){
 				case BISS_SPI_CH_1:
-					if(CH1_SSI == CH1_SSI_FULL_FREQ){
+					if(CH1_SPI_MODE == CH1_LENZ_BISS){
 						// #ifndef CH1_SSI
 						if (BiSS_C_Master_StateMachine(BiSS1_SPI_rx.CDS) == CDM) {					
 							BiSS1_SPI_CDM_Req();
@@ -395,14 +448,14 @@ void BISS_Task_IRQHandler(void) {
 					else{
 						BiSS2_SPI_nCDM_Req();
 					}
-					if(CH1_SSI == CH1_SSI_FULL_FREQ){
+					if(CH1_SPI_MODE == CH1_LENZ_BISS){
 						// #ifndef CH1_SSI
 						BiSS1_SPI_nCDM_Req();
 						// #endif
 					}
 					break;
 				default:
-					if(CH1_SSI == CH1_SSI_FULL_FREQ){
+					if(CH1_SPI_MODE == CH1_LENZ_BISS){
 						// #ifndef CH1_SSI
 						BiSS1_SPI_nCDM_Req();
 						// #endif
@@ -740,18 +793,26 @@ static void BISS1_SPI_Init(void)
 	/* Init setup DMA/SPI */
 	LL_SPI_Disable(BISS1_SPI);
 	LL_DMA_SetPeriphAddress(DMA_BISS1_RX, (uint32_t) &BISS1_SPI->DR);
-	if(CH1_SSI == CH1_SSI_HALF_FREQ){
-		// #ifdef CH1_SSI
-		LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
-	} 
-	else if(CH1_SSI == CH1_SSI_FULL_FREQ){
-		// #else
-		LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
-		// #endif
+	switch(CH1_SPI_MODE){
+		case CH1_LIR_SSI:			
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
+			break;
+		case CH1_LENZ_BISS:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
+			break;
+		case CH1_LIR_BISS_21B:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 8);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);	
+			break;
+		default:
+			break;				
 	}
-	LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
 	LL_DMA_SetPeriphAddress(DMA_BISS1_TX, (uint32_t) &BISS1_SPI->DR);
-	LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
 	LL_SPI_EnableDMAReq_TX(BISS1_SPI);
 	LL_SPI_EnableDMAReq_RX(BISS1_SPI);
 	LL_SPI_Enable(BISS1_SPI);
@@ -1564,8 +1625,8 @@ static void BISS_USART2_DeInit(void){
 }
 
 void SetBiSS_SPI_Ch(BiSS_SPI_Ch_t ch_to_set){
-	// #ifndef CH1_SSI
-	if(CH1_SSI == CH1_SSI_FULL_FREQ){
+	// #ifndef CH1_SPI_MODE
+	if(CH1_SPI_MODE == CH1_LENZ_BISS){
 		if(IsBiSSReqBusy() == BISS_REQ_OK){
 			BiSS_SPI_Ch = ch_to_set;
 		}	
@@ -1573,9 +1634,9 @@ void SetBiSS_SPI_Ch(BiSS_SPI_Ch_t ch_to_set){
 	// #endif
 }
 
-void SetCh1SSIFreq(CH1_SSI_t freq_to_set){
+void SetCh1SSIFreq(CH1_SPI_mode_t freq_to_set){
 	if(IsBiSSReqBusy() == BISS_REQ_OK){
-		CH1_SSI = freq_to_set;
+		CH1_SPI_MODE = freq_to_set;
 	}
 }
 

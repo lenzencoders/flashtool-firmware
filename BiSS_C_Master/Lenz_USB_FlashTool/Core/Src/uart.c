@@ -437,12 +437,17 @@ void UART_StateMachine(void) {
 										
 								case UART_COMMAND_CHANGE_CH1_SSI_FREQ:
 									if (cmd_data[0] == 0) {
-											if (CH1_SSI != CH1_SSI_HALF_FREQ) {
-												SetCh1SSIFreq(CH1_SSI_HALF_FREQ);
+											if (CH1_SPI_MODE != CH1_LIR_SSI) {
+												SetCh1SSIFreq(CH1_LIR_SSI);
 											}
 										} else if (cmd_data[0] == 1) {
-											if (BiSS_SPI_Ch != CH1_SSI_FULL_FREQ){
-												SetCh1SSIFreq(CH1_SSI_FULL_FREQ);
+											if (BiSS_SPI_Ch != CH1_LENZ_BISS){
+												SetCh1SSIFreq(CH1_LENZ_BISS);
+											}
+										}
+										else if (cmd_data[0] == 2) {
+											if (BiSS_SPI_Ch != CH1_LIR_BISS_21B){
+												SetCh1SSIFreq(CH1_LIR_BISS_21B);
 											}
 										}
 										UART_State = UART_STATE_IDLE;

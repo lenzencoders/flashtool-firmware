@@ -90,7 +90,7 @@ static inline AngleDataRenishaw_t getAngleRenishaw(void){
 
 void SetBiSS_SPI_Ch(BiSS_SPI_Ch_t ch_to_set);
 
-void SetCh1SSIFreq(CH1_SSI_t freq_to_set);
+void SetCh1SSIFreq(CH1_SPI_mode_t freq_to_set);
 
 uint32_t GetSSIFlag(void);
 
