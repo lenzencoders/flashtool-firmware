@@ -435,24 +435,24 @@ void UART_StateMachine(void) {
 										queue_cnt--;
 										break;
 										
-								case UART_COMMAND_CHANGE_CH1_SSI_FREQ:
+								case UART_COMMAND_CHANGE_CH1_MODE:
 									if (cmd_data[0] == 0) {
-											if (CH1_SPI_MODE != CH1_LIR_SSI) {
-												SetCh1SSIFreq(CH1_LIR_SSI);
-											}
-										} else if (cmd_data[0] == 1) {
-											if (BiSS_SPI_Ch != CH1_LENZ_BISS){
-												SetCh1SSIFreq(CH1_LENZ_BISS);
-											}
+										if (CH1_SPI_MODE != CH1_LENZ_BISS) {
+											SetCh1SSIFreq(CH1_LENZ_BISS);
 										}
-										else if (cmd_data[0] == 2) {
-											if (BiSS_SPI_Ch != CH1_LIR_BISS_21B){
-												SetCh1SSIFreq(CH1_LIR_BISS_21B);
-											}
+									} else if (cmd_data[0] == 1) {
+										if (CH1_SPI_MODE != CH1_LIR_SSI){
+											SetCh1SSIFreq(CH1_LIR_SSI);
 										}
-										UART_State = UART_STATE_IDLE;
-										queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-										queue_cnt--;
+									}
+									else if (cmd_data[0] == 2) {
+										if (CH1_SPI_MODE != CH1_LIR_BISS_21B){
+											SetCh1SSIFreq(CH1_LIR_BISS_21B);
+										}
+									}
+									UART_State = UART_STATE_IDLE;
+									queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+									queue_cnt--;
 									break;
 									
 								case UART_COMMAND_WRITE_REG:

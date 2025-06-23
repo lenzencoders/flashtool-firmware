@@ -97,9 +97,9 @@ SPI_rx_t BiSS1_SPI_rx;
 SPI_rx_t BiSS2_SPI_rx;
 USART_rx_t USART_rx;
 
-volatile BISS_Mode_t Current_Mode = BISS_MODE_SPI_SPI; // BISS_MODE_SPI_SPI or BISS_MODE_AB_UART or BISS_MODE_SPI_UART_IRS or BISS_MODE_AB_SPI or BISS_MODE_DEFAULT_SPI
+volatile BISS_Mode_t Current_Mode = BISS_MODE_DEFAULT_SPI; // BISS_MODE_SPI_SPI or BISS_MODE_AB_UART or BISS_MODE_SPI_UART_IRS or BISS_MODE_AB_SPI or BISS_MODE_DEFAULT_SPI
 volatile BiSS_SPI_Ch_t BiSS_SPI_Ch = BISS_SPI_CH_2; // BISS_SPI_CH_1 or BISS_SPI_CH_2
-volatile CH1_SPI_mode_t CH1_SPI_MODE = CH1_LIR_BISS_21B;
+volatile CH1_SPI_mode_t CH1_SPI_MODE = CH1_LENZ_BISS; // 	CH1_LENZ_BISS or CH1_LIR_SSI or CH1_LIR_BISS_21B
 volatile Current_Sensor_Mode_t Current_Sensor_Mode = CURRENT_SENSOR_MODE_ENABLE; // CURRENT_SENSOR_MODE_ENABLE CURRENT_SENSOR_MODE_DISABLE
 volatile PinDef PWR1_EN_PIN = {GPIOA, LL_GPIO_PIN_8};
 
@@ -194,14 +194,14 @@ static void BiSS1_SPI_nCDM_Req(void){
 	BISS1_SPI->CR2 = SPI_CR2_BISS_CFG;
 	// #ifdef CH1_SPI_MODE
 	switch(CH1_SPI_MODE){
+		case CH1_LENZ_BISS:
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5U); // TODO try 1U via define
+			break;
 		case CH1_LIR_SSI:
 			LL_SPI_SetBaudRatePrescaler(BISS1_SPI, LL_SPI_BAUDRATEPRESCALER_DIV128);
 			LL_DMA_SetDataLength(DMA_BISS1_TX, 3U); 
 			LL_DMA_SetDataLength(DMA_BISS1_RX, 3U); 
-			break;
-		case CH1_LENZ_BISS:
-			LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
-			LL_DMA_SetDataLength(DMA_BISS1_RX, 5U); // TODO try 1U via define
 			break;
 		case CH1_LIR_BISS_21B:
 			LL_DMA_SetDataLength(DMA_BISS1_TX, 8U); // TODO try 1U via define
@@ -324,6 +324,25 @@ void BISS_Task_IRQHandler(void) {
 	switch(Current_Mode){
 		case BISS_MODE_SPI_SPI:
 			switch(CH1_SPI_MODE){
+				case CH1_LENZ_BISS:
+					BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
+					if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
+						CRC6_State1 = CRC6_OK;
+						AngleData1.angle_data = BISS1_SCD >> 8;
+						AngleData1.time_of_life_counter++;
+						if(((BISS1_SCD >> 6) & 0x3) == 0x3){
+							LED1TurnGreen();
+						}
+						else{
+							LED1TurnRed();
+						}
+					}
+					else{
+						LED1TurnRed();
+						CRC6_State1 = CRC6_FAULT;
+					}
+					break;
+
 				case CH1_LIR_SSI:
 					(void) BiSS1_SPI_rx;
 					uint32_t rev_temp = __REV(*(uint32_t *)&BiSS1_SPI_rx.buf[0]);		
@@ -345,24 +364,7 @@ void BISS_Task_IRQHandler(void) {
 						SSI_HALF_FREQ_FLAG = 1;
 					}
 					break;
-				case CH1_LENZ_BISS:
-					BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
-					if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
-						CRC6_State1 = CRC6_OK;
-						AngleData1.angle_data = BISS1_SCD >> 8;
-						AngleData1.time_of_life_counter++;
-						if(((BISS1_SCD >> 6) & 0x3) == 0x3){
-							LED1TurnGreen();
-						}
-						else{
-							LED1TurnRed();
-						}
-					}
-					else{
-						LED1TurnRed();
-						CRC6_State1 = CRC6_FAULT;
-					}
-					break;
+
 				case CH1_LIR_BISS_21B:
 					(void) BiSS1_SPI_rx;
 					uint64_t TempBissRaw;
@@ -581,6 +583,9 @@ void Current_Sensor_Init(void){
 	switch(Current_Sensor_Mode){
 		case CURRENT_SENSOR_MODE_ENABLE:
 			MX_ADC1_Init();
+			if(Current_Mode != BISS_MODE_DEFAULT_SPI){
+				EncoderPowerEnable();
+			}
 			Config_ADC1();
 			break;
 		case CURRENT_SENSOR_MODE_DISABLE:
@@ -794,15 +799,15 @@ static void BISS1_SPI_Init(void)
 	LL_SPI_Disable(BISS1_SPI);
 	LL_DMA_SetPeriphAddress(DMA_BISS1_RX, (uint32_t) &BISS1_SPI->DR);
 	switch(CH1_SPI_MODE){
-		case CH1_LIR_SSI:			
-			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
-			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
-			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
-			break;
 		case CH1_LENZ_BISS:
 			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
 			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
 			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
+			break;
+		case CH1_LIR_SSI:			
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
 			break;
 		case CH1_LIR_BISS_21B:
 			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
@@ -810,7 +815,7 @@ static void BISS1_SPI_Init(void)
 			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);	
 			break;
 		default:
-			break;				
+			break;		
 	}
 	LL_DMA_SetPeriphAddress(DMA_BISS1_TX, (uint32_t) &BISS1_SPI->DR);
 	LL_SPI_EnableDMAReq_TX(BISS1_SPI);
@@ -1457,7 +1462,7 @@ static void MX_ADC1_Init(void)
 	PWR1_EN_PIN.port = GPIOA;
 	PWR1_EN_PIN.pin = LL_GPIO_PIN_8;
 	/* Enable PWR1 - PA8 PIN */
-	EncoderPowerEnable();
+//	EncoderPowerEnable();
 //	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 
   /* USER CODE END ADC1_Init 2 */
