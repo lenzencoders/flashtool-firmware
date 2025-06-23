@@ -740,11 +740,11 @@ void UART_StateMachine(void) {
 					break;
 						
 				case UART_STATE_ANGLE_READING_TWO_ENC_SPI:
-						if(ReadingStrEnc1.len > 0) {
+						if(ReadingStrEnc2.len > 0) {
 							AngleData_t angle_data1 = getAngle1();
 							AngleData_t angle_data2 = getAngle2();
 				
-							if(angle_data1.time_of_life_counter != ReadingStrEnc1.ToL_cnt) {
+							if(angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) {
 								
 								ReadingStrEnc1.ToL_cnt = angle_data1.time_of_life_counter;
 								ReadingStrEnc1.AngleFIFO[ReadingStrEnc1.FIFO_current_ptr] = angle_data1;
