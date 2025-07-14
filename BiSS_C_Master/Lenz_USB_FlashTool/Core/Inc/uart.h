@@ -41,6 +41,7 @@ typedef enum{
 	UART_COMMAND_READ_ANGLE_ENC_SPI = 0x81U,
 	UART_COMMAND_READ_REG 	= 0x82U,
 	UART_COMMAND_NRST	= 0x83U,
+	UART_COMMAND_REBOOT_TO_BL = 0xFFU,
 }UART_Command_t;
 
 typedef struct {
@@ -61,7 +62,11 @@ uint8_t check_request(uint8_t *received_data);
 
 void UART_Config(void);
 void UART_StateMachine(void);
-	
+
+void TAMP_Init(void);
+void TAMP_DeInit(void);
+
+void Stay_in_FW_Config(void);
 	
 #ifdef __cplusplus
 }

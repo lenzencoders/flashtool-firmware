@@ -6,6 +6,7 @@
  * @copyright Lenz Encoders (c) 2024
  */
 #include "uart.h"
+#include "main.h"
  
 #include "stm32g4xx_ll_lpuart.h"
 #include "stm32g4xx_ll_dma.h"
@@ -14,6 +15,7 @@
 #include "string.h"
 #include "biss_c_master.h"
 #include "biss_c_master_hal.h"
+#include "tamp_access.h"
 
 #define RX_BUFFER_SIZE 		256U
 //#define UART_LINE_SIZE		133U
@@ -123,6 +125,53 @@ uint8_t queue_read_cnt = 0;
 uint8_t queue_write_cnt = 0;
 uint8_t queue_cnt = 0;
 uint8_t retry_cnt = 0;
+
+void TAMP_Init(void) {
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+
+	LL_RCC_EnableRTC();
+	LL_PWR_EnableBkUpAccess();
+	
+	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
+	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_4SAMPLE);
+  SET_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
+	
+	LL_RTC_TAMPER_Enable(RTC, LL_RTC_TAMPER_1);
+	
+	NVIC_SetPriority(RTC_TAMP_LSECSS_IRQn, 1);
+	NVIC_EnableIRQ(RTC_TAMP_LSECSS_IRQn);
+}
+
+void TAMP_DeInit(void)
+{
+	CLEAR_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
+	NVIC_DisableIRQ(RTC_TAMP_LSECSS_IRQn);
+	
+	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
+	
+	WRITE_REG(TAMP->SCR, TAMP_SCR_CTAMP1F);
+ 
+	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_DISABLE);
+	
+	LL_PWR_DisableBkUpAccess();
+	
+	LL_RCC_DisableRTC();
+	LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+}
+
+void Stay_in_FW_Config(void) {
+	ClearTampFlag(TAMP_FLAGS_STAY_BL);
+	SetTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+}
+
+void JumpToBootloader(void) {
+		ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+		SetTampFlag(TAMP_FLAGS_STAY_BL);
+//		ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+		TAMP_DeInit();
+    NVIC_SystemReset();
+}
 
 QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
 	if (queue_cnt < QUEUE_SIZE){
@@ -438,16 +487,16 @@ void UART_StateMachine(void) {
 								case UART_COMMAND_CHANGE_CH1_MODE:
 									if (cmd_data[0] == 0) {
 										if (CH1_SPI_MODE != CH1_LENZ_BISS) {
-											SetCh1SSIFreq(CH1_LENZ_BISS);
+											Set_Ch1_Mode(CH1_LENZ_BISS);
 										}
 									} else if (cmd_data[0] == 1) {
 										if (CH1_SPI_MODE != CH1_LIR_SSI){
-											SetCh1SSIFreq(CH1_LIR_SSI);
+											Set_Ch1_Mode(CH1_LIR_SSI);
 										}
 									}
 									else if (cmd_data[0] == 2) {
 										if (CH1_SPI_MODE != CH1_LIR_BISS_21B){
-											SetCh1SSIFreq(CH1_LIR_BISS_21B);
+											Set_Ch1_Mode(CH1_LIR_BISS_21B);
 										}
 									}
 									UART_State = UART_STATE_IDLE;
@@ -695,6 +744,10 @@ void UART_StateMachine(void) {
 								case UART_COMMAND_NRST:		
  										NVIC_SystemReset();
  										break;
+								
+								case UART_COMMAND_REBOOT_TO_BL:
+										JumpToBootloader();
+										break;
 											
 								default:
 										UART_State = UART_STATE_ABORT;
