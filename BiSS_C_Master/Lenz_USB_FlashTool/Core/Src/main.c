@@ -72,7 +72,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	__enable_irq();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -113,7 +113,10 @@ int main(void)
   // MX_USART2_UART_Init();
   
 	/* USER CODE BEGIN 2 */
+
 //	UART_Config();
+	TAMP_Init();
+	Stay_in_FW_Config();
 	Current_Sensor_Init();
 	BiSS_C_Master_HAL_Init();
 	UART_Config();
