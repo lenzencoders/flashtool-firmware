@@ -824,6 +824,29 @@ static void BISS1_SPI_Init(void)
 	LL_DMA_EnableChannel(DMA_BISS1_RX);
 }
 
+static void CH1_SPI_Mode_Init(void)
+{
+	switch(CH1_SPI_MODE){
+		case CH1_LENZ_BISS:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
+			break;
+		case CH1_LIR_SSI:			
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
+			break;
+		case CH1_LIR_BISS_21B:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 8);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);	
+			break;
+		default:
+			break;		
+	}
+}
+
 static void _BISS2_SPI_Init(void)
 {	
 	
@@ -1639,9 +1662,22 @@ void SetBiSS_SPI_Ch(BiSS_SPI_Ch_t ch_to_set){
 	// #endif
 }
 
-void SetCh1SSIFreq(CH1_SPI_mode_t freq_to_set){
+void Set_Ch1_Mode(CH1_SPI_mode_t New_Mode){
+	CH1_SPI_MODE = New_Mode;
 	if(IsBiSSReqBusy() == BISS_REQ_OK){
-		CH1_SPI_MODE = freq_to_set;
+		if(CH1_SPI_MODE == CH1_LENZ_BISS){
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);
+		} else if(CH1_SPI_MODE == CH1_LIR_SSI){
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);
+		}	else if(CH1_SPI_MODE == CH1_LIR_BISS_21B){
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 8);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);
+		}
 	}
 }
 
