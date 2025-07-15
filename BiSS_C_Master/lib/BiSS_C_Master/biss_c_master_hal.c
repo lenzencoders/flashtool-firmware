@@ -177,6 +177,10 @@ static void LED1TurnGreen(void){
 	LL_GPIO_SetOutputPin(LED1_RED);
 	LL_GPIO_ResetOutputPin(LED1_GREEN);
 }
+static void LED1TurnOff(void){
+	LL_GPIO_SetOutputPin(LED1_GREEN);
+	LL_GPIO_SetOutputPin(LED1_RED);
+}
 static void LED2TurnRed(void){
 	LL_GPIO_SetOutputPin(LED2_GREEN);
 	LL_GPIO_ResetOutputPin(LED2_RED);
@@ -184,6 +188,10 @@ static void LED2TurnRed(void){
 static void LED2TurnGreen(void){
 	LL_GPIO_SetOutputPin(LED2_RED);
 	LL_GPIO_ResetOutputPin(LED2_GREEN);
+}
+static void LED2TurnOff(void){
+	LL_GPIO_SetOutputPin(LED2_RED);
+	LL_GPIO_SetOutputPin(LED2_GREEN);
 }
 
 static void BiSS1_SPI_nCDM_Req(void){
@@ -595,30 +603,39 @@ void Current_Sensor_Init(void){
 }
 
 void BiSS_C_Master_HAL_Init(void){
-	LED1TurnRed();
-	LED2TurnRed();
+//	LED1TurnRed();
+//	LED2TurnRed();
 	switch(Current_Mode){
 		case BISS_MODE_SPI_SPI:
+			LED1TurnRed();
+			LED2TurnRed();
 			BISS1_SPI_Init();
 			BISS2_SPI_Init();
 			break;
 		case BISS_MODE_AB_UART:
+			LED1TurnRed();
+			LED2TurnRed();
 			MX_TIM3_ENC_Init();
 			Quadrature_Renishaw_Init();
 			USART2_UART_Init();
 			BISS_UART_Init();
 			break;
 		case BISS_MODE_SPI_UART_IRS:
+			LED1TurnRed();
+			LED2TurnRed();
 			BISS1_SPI_Init();
 			USART2_Init_IRS();
 			USART2_Config_IRS();
 			break;
 		case BISS_MODE_AB_SPI:
+			LED1TurnRed();
+			LED2TurnRed();
 			MX_TIM3_ENC_Init();
 			Quadrature_Renishaw_Init();
 			BISS2_SPI_Init();
 			break;
 		case BISS_MODE_DEFAULT_SPI:
+			LED2TurnRed();
 			BISS2_SPI_Init();
 			break;
 	}
@@ -1682,8 +1699,10 @@ void Set_Ch1_Mode(CH1_SPI_mode_t New_Mode){
 }
 
 void Stop_Current_Mode(void){
-	LED1TurnRed();
-	LED2TurnRed();
+//	LED1TurnRed();
+//	LED2TurnRed();
+	LED1TurnOff();
+	LED2TurnOff();
 	if(Current_Mode == BISS_MODE_SPI_SPI){
 		BISS1_SPI_DeInit();
 		BISS2_SPI_DeInit();
