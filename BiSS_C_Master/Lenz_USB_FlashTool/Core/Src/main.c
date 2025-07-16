@@ -699,18 +699,22 @@ static void MX_GPIO_Init(void)
   /**/
 //  LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_10);
 
-  /**/
+  /*LED1_RED*/
 //  LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_11);
 	LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_11);
 
-  /**/
+  /*LED1_GREEN*/
 //  LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_12);
 	LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_12);
-
-  /**/
+	
+	/*LED2_RED*/
+	LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_5);
+	
+  /*LED2_GREEN*/
 //  LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_6);
+	LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_6);
 
-  /**/
+  /*PWR2_EN_PIN*/
   LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_7);
 
   /**/

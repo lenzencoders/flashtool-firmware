@@ -598,6 +598,9 @@ void Current_Sensor_Init(void){
 			break;
 		case CURRENT_SENSOR_MODE_DISABLE:
 			ADC1_DeInit();
+			if(Current_Mode != BISS_MODE_DEFAULT_SPI){
+				EncoderPowerEnable();
+			}
 			break;
 	}
 }
@@ -1570,7 +1573,7 @@ static void ADC1_DeInit(void)
 	PWR1_EN_PIN.port = GPIOB;
 	PWR1_EN_PIN.pin = LL_GPIO_PIN_0;
 	/* Enable PWR1 - PB0 PIN */
-	EncoderPowerEnable();
+	EncoderPowerDisable();
 //	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 	
 	/* Disable PA8 PIN */
