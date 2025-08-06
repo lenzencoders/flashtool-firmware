@@ -449,7 +449,10 @@ void UART_StateMachine(void) {
 										break;
 								
 								case UART_COMMAND_ENC1_POWER_ON:
-										EncoderPowerEnable();
+//										EncoderPowerEnable();
+										if(Current_Mode != BISS_MODE_DEFAULT_SPI){
+											EncoderPowerEnable();
+										}
 										UART_State = UART_STATE_IDLE;
 										queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 										queue_cnt--;
@@ -613,7 +616,7 @@ void UART_StateMachine(void) {
 										UART_State = UART_STATE_IDLE;
 									break;
 								
-								case UART_COMMAND_READ_ANGLE_ENC_SPI_CURRENT:
+								case UART_COMMAND_READ_ANGLE_ENC_SPI_INSTANT:
 										UART_TX.cmd = command;
 										UART_TX.len = cmd_data_len;
 										UART_TX.adr_h = 0;
@@ -621,6 +624,10 @@ void UART_StateMachine(void) {
 										if(BiSS_SPI_Ch == BISS_SPI_CH_2){
 											AngleData_t angle_data2 = getAngle2();
 											*((AngleData_t*)&UART_TX.Buf[0]) = angle_data2;
+											UART_Transmit(&UART_TX);
+										} else if(BiSS_SPI_Ch == BISS_SPI_CH_1){
+											AngleData_t angle_data1 = getAngle1();
+											*((AngleData_t*)&UART_TX.Buf[0]) = angle_data1;
 											UART_Transmit(&UART_TX);
 										}
 										queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
