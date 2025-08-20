@@ -1,7 +1,7 @@
 /*!
- * @file biss_c_master.h
+ * @file uart.h
  * @author Kirill Rostovskiy (kmrost@lenzencoders.com)
- * @brief BiSS C Master library
+ * @brief UART library
  * @version 0.1
  * @copyright Lenz Encoders (c) 2024
  */
@@ -13,10 +13,20 @@ extern "C" {
 #endif
 	
 #include "stdint.h"
+#include "string.h"
+#include "stm32g4xx_ll_lpuart.h"
+#include "stm32g4xx_ll_dma.h"
+#include "stm32g4xx_ll_tim.h"
+#include "stm32g4xx_ll_gpio.h"
+#include "main.h"
 #include "hw_cfg.h"
+#include "biss_c_master.h"
+#include "biss_c_master_hal.h"
+#include "tamp_access.h"
 
 //move to c
 
+#define RX_BUFFER_SIZE 		256U
 #define TX_BUFFER_SIZE 		252U
 
 typedef enum{
