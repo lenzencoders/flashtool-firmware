@@ -54,6 +54,7 @@ typedef enum{
 	UART_ERROR_BISS_WRITE_FAULT = 0x04U,
 	UART_ERROR_BISS_READ_FAULT = 0x05U,
 	UART_ERROR_LEN_DATA_IS_ZERO = 0x06U,
+	UART_ERROR_LEN_IS_NOT_CORRECT = 0x07U,
 }UART_Error_t;
 
 volatile enum{
@@ -706,12 +707,26 @@ static void handle_run_command_state(void) {
 				break;
 				
 			case UART_COMMAND_CHANGE_MODE:
-				handle_change_mode_command(cmd_data[cmd_data_len-1]);
-				complete_command_processing();
+				if(cmd_data_len > 1) {
+					UART_State = UART_STATE_ABORT;
+					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
+				} else {
+					handle_change_mode_command(cmd_data[cmd_data_len-1]);
+					complete_command_processing();
+				}
 				break;
 												
 			case UART_COMMAND_PAGE:
-				handle_page_command(cmd_data[0]);
+				if(cmd_data_len > 1) {
+					UART_State = UART_STATE_ABORT;
+					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
+				} else {
+					handle_page_command(cmd_data[cmd_data_len-1]);
+				}
 				break;
 				
 			case UART_COMMAND_ENC1_POWER_OFF:
@@ -737,13 +752,27 @@ static void handle_run_command_state(void) {
 				break;
 						
 			case UART_COMMAND_SELECT_SPI_CH:
-				handle_select_spi_ch_command(cmd_data[cmd_data_len-1]);
-				complete_command_processing();
+				if(cmd_data_len > 1) {
+					UART_State = UART_STATE_ABORT;
+					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
+				} else {
+					handle_select_spi_ch_command(cmd_data[cmd_data_len-1]);
+					complete_command_processing();
+				}
 				break;
 					
 			case UART_COMMAND_CHANGE_CH1_MODE:
-				handle_change_ch1_mode_command(cmd_data[cmd_data_len-1]);			
-				complete_command_processing();
+				if(cmd_data_len > 1) {
+					UART_State = UART_STATE_ABORT;
+					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
+				} else {
+					handle_change_ch1_mode_command(cmd_data[cmd_data_len-1]);			
+					complete_command_processing();
+				}
 				break;
 				
 			case UART_COMMAND_WRITE_REG:
@@ -765,8 +794,15 @@ static void handle_run_command_state(void) {
 				break;
 
 			case UART_COMMAND_CHANGE_CURRENT_SENSOR_MODE:
-				handle_change_current_sensor_mode_command(cmd_data[cmd_data_len-1]);
-				complete_command_processing();
+				if(cmd_data_len > 1) {
+					UART_State = UART_STATE_ABORT;
+					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
+				} else {
+					handle_change_current_sensor_mode_command(cmd_data[cmd_data_len-1]);
+					complete_command_processing();
+				}
 				break;
 			
 			case UART_COMMAND_READ_ENC2_CURRENT:
@@ -1014,7 +1050,17 @@ static void handle_abort_state(void) {
 			UART_TX.Buf[0] = (uint8_t)UART_Error;
 			UART_Transmit(&UART_TX);
 			break;
-				
+		
+		case UART_ERROR_LEN_IS_NOT_CORRECT:
+			UART_Error_Type = ERROR_TYPE_UART;
+			UART_TX.cmd = (uint8_t)UART_Error_Type;
+			UART_TX.len = 1;
+			UART_TX.adr_h = 0;
+			UART_TX.adr_l = 0;
+			UART_TX.Buf[0] = (uint8_t)UART_Error;
+			UART_Transmit(&UART_TX);
+			break;
+		
 		default:
 			break;
 	}
