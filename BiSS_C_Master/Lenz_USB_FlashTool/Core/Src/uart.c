@@ -505,7 +505,7 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UAR
 
 static void handle_write_read_enc_usart2_command(uint8_t cmd_data_len, uint8_t* cmd_data, UART_Command_t command) {
 	UART_TX.cmd = command;
-	UART_TX.len = TX_BUFFER_SIZE;
+	UART_TX.len = cmd_data_len;
 	UART_TX.adr_h = 0;
 	UART_TX.adr_l = 0;
 	USART2_Write_Read_IRS(cmd_data, UART_TX.Buf, cmd_data_len);
@@ -634,12 +634,6 @@ static void handle_idle_state(void) {
 			uart_expected_length = uart_length + HEXLEN_ADR_CMD_CRC_LEN;
 			if (bytes_received >= uart_expected_length) {
 				UART_State = UART_STATE_RECEIVE;
-
-	//                dma_rx_cnt %= RX_BUFFER_SIZE;
-	//                uart_length = usb_rx_buffer[dma_rx_cnt];
-	//                uart_expected_length = uart_length + HEXLEN_ADR_CMD_CRC_LEN;
-	//                UART_State = UART_STATE_RECEIVE;
-	//            //change
 			}
 	} else {
 		if (queue_cnt > 0){

@@ -97,10 +97,10 @@ SPI_rx_t BiSS1_SPI_rx;
 SPI_rx_t BiSS2_SPI_rx;
 USART_rx_t USART_rx;
 
-volatile BISS_Mode_t Current_Mode = BISS_MODE_DEFAULT_SPI; // BISS_MODE_SPI_SPI or BISS_MODE_AB_UART or BISS_MODE_SPI_UART_IRS or BISS_MODE_AB_SPI or BISS_MODE_DEFAULT_SPI
-volatile BiSS_SPI_Ch_t BiSS_SPI_Ch = BISS_SPI_CH_2; // BISS_SPI_CH_1 or BISS_SPI_CH_2
-volatile CH1_SPI_mode_t CH1_SPI_MODE = CH1_LENZ_BISS; // 	CH1_LENZ_BISS or CH1_LIR_SSI or CH1_LIR_BISS_21B
-volatile Current_Sensor_Mode_t Current_Sensor_Mode = CURRENT_SENSOR_MODE_ENABLE; // CURRENT_SENSOR_MODE_ENABLE CURRENT_SENSOR_MODE_DISABLE
+volatile BISS_Mode_t Current_Mode = BISS_MODE_DEFAULT_SPI;
+volatile BiSS_SPI_Ch_t BiSS_SPI_Ch = BISS_SPI_CH_2;
+volatile CH1_SPI_mode_t CH1_SPI_MODE = CH1_LENZ_BISS;
+volatile Current_Sensor_Mode_t Current_Sensor_Mode = CURRENT_SENSOR_MODE_ENABLE;
 volatile PinDef PWR1_EN_PIN = {GPIOA, LL_GPIO_PIN_8};
 
 volatile CDS_t USART_CDS_last = CDS;
@@ -155,6 +155,7 @@ static void USART2_Config_IRS(void);
 static void USART2_IRS_Transmit(uint8_t* data, uint8_t length);
 static void USART2_IRS_Receive(uint8_t* data, uint8_t length);
 static void Reenable_USART2_RX(void);
+static void CH1_SPI_Mode_Init(void);
 static void BISS1_SPI_Init(void);
 static void BISS1_SPI_DeInit(void);
 static void BISS2_SPI_Init(void);
@@ -666,24 +667,14 @@ void EncoderSecondPowerDisable(void)
 }
 
 static void USART2_IRS_Transmit(uint8_t* data, uint8_t length){
-	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
-	LL_DMA_SetDataLength(DMA_BISS2_UART_TX, length);
-	memcpy(usart2_tx_buffer, data, length);
-	LL_USART_EnableDMAReq_TX(USART2);
-	LL_DMA_EnableChannel(DMA_BISS2_UART_TX);
-	
-	uint32_t timeout = 20000;
-	while(!LL_DMA_IsActiveFlag_HT6(DMA1)){
-		if(--timeout == 0)
-			break;
-	}
-	LL_DMA_ClearFlag_HT6(DMA1);
-
-	while(!LL_DMA_IsActiveFlag_TC6(DMA1)){
-		if(--timeout == 0)
-			break;
-	}
-	LL_DMA_ClearFlag_TC6(DMA1);
+    LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
+    while(LL_DMA_IsEnabledChannel(DMA_BISS2_UART_TX)) {};
+    memcpy(usart2_tx_buffer, data, length);
+    __DSB();
+    __DMB();
+    LL_DMA_SetDataLength(DMA_BISS2_UART_TX, length);
+		LL_USART_EnableDMAReq_TX(USART2);
+    LL_DMA_EnableChannel(DMA_BISS2_UART_TX);
 }
 
 static void USART2_IRS_Receive(uint8_t* data, uint8_t length){
@@ -701,11 +692,10 @@ static void USART2_IRS_Receive(uint8_t* data, uint8_t length){
 static void Reenable_USART2_RX(void)
 {
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
-	
+	while(LL_DMA_IsEnabledChannel(DMA_BISS2_UART_RX)) {};
 	LL_DMA_SetMemoryAddress(DMA_BISS2_UART_RX, (uint32_t)usart2_rx_buffer);
 	LL_DMA_SetDataLength(DMA_BISS2_UART_RX, RX_BUF_SIZE);
 	LL_USART_EnableDMAReq_RX(USART2);
-	
 	LL_DMA_EnableChannel(DMA_BISS2_UART_RX);
 }
 
@@ -717,6 +707,29 @@ void USART2_Write_Read_IRS(uint8_t* txData, uint8_t* rxData, uint8_t data_len)
 	USART2_IRS_Receive(rxData, data_len);
 	Reenable_USART2_RX();
 	LED2TurnRed();
+}
+
+static void CH1_SPI_Mode_Init(void)
+{
+	switch(CH1_SPI_MODE){
+		case CH1_LENZ_BISS:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
+			break;
+		case CH1_LIR_SSI:			
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
+			break;
+		case CH1_LIR_BISS_21B:
+			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
+			LL_DMA_SetDataLength(DMA_BISS1_RX, 8);	
+			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);	
+			break;
+		default:
+			break;		
+	}
 }
 
 static void BISS1_SPI_Init(void)
@@ -842,29 +855,6 @@ static void BISS1_SPI_Init(void)
 	LL_SPI_EnableDMAReq_RX(BISS1_SPI);
 	LL_SPI_Enable(BISS1_SPI);
 	LL_DMA_EnableChannel(DMA_BISS1_RX);
-}
-
-static void CH1_SPI_Mode_Init(void)
-{
-	switch(CH1_SPI_MODE){
-		case CH1_LENZ_BISS:
-			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[3]);
-			LL_DMA_SetDataLength(DMA_BISS1_RX, 5);	
-			LL_DMA_SetDataLength(DMA_BISS1_TX, 5);	
-			break;
-		case CH1_LIR_SSI:			
-			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[1]);
-			LL_DMA_SetDataLength(DMA_BISS1_RX, 3);	
-			LL_DMA_SetDataLength(DMA_BISS1_TX, 3);	
-			break;
-		case CH1_LIR_BISS_21B:
-			LL_DMA_SetMemoryAddress(DMA_BISS1_RX, (uint32_t) &BiSS1_SPI_rx.buf[0]);
-			LL_DMA_SetDataLength(DMA_BISS1_RX, 8);	
-			LL_DMA_SetDataLength(DMA_BISS1_TX, 8);	
-			break;
-		default:
-			break;		
-	}
 }
 
 static void _BISS2_SPI_Init(void)
@@ -1198,49 +1188,39 @@ static void BISS_UART_Init(void)
 	//LL_DMA_SetDataLength(DMA_BISS2_UART_TX, 4);                  							// Number of bytes to send
 	//LL_USART_EnableDMAReq_TX(BISS2_UART);																			// Enable DMA for USART TX
 	
-	LL_USART_SetDEAssertionTime(BISS2_UART, 16U);
-	LL_USART_SetDEDeassertionTime(BISS2_UART, 16U);
+	LL_USART_SetDEAssertionTime(BISS2_UART, 2U); // TODO: 16U
+	LL_USART_SetDEDeassertionTime(BISS2_UART, 2U);
 	LL_USART_Enable(BISS2_UART);		
 	LL_DMA_EnableChannel(DMA_BISS2_UART_RX);
 	//LL_DMA_EnableChannel(DMA_BISS2_UART_TX);                                  // Enable DMA TX channel
 	//LL_USART_EnableDMAReq_TX(BISS2_UART);                                     // Enable DMA for USART TX
 }
 
-static void USART2_Init_IRS(void)
-{
-	/* Enable Power2 Enc PIN */
-	EncoderSecondPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR2_EN_PIN);
-//	LL_GPIO_SetPinMode(PWR2_EN_PIN, LL_GPIO_MODE_OUTPUT);
-//	LL_GPIO_SetPinOutputType(PWR2_EN_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	
-	// GPIO struct Init
+static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
+{	
 	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-	// USART struct Init
 	LL_USART_InitTypeDef USART_InitStruct = {0};
+	
 	// Enable the clocks for the required GPIO ports
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-	// Enable USART2 peripheral clock
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
-	// Enable DMAMUX1 peripheral clock
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
-	// Enable DMA1 peripheral clock
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+	
 	/**USART2 GPIO Configuration
   PA1   ------> USART2_DE
-	PB4   ------> USART2_RX
+	PB4  	------> USART2_RX
   PB3   ------> USART2_TX
 	*/
 	// PA1 -> USART2_DE
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
-	GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	/* Enable DE2 PIN */
-	LL_GPIO_SetOutputPin(DE2_PIN);
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 	
 	// PB4 -> USART2_RX (input)
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
@@ -1261,6 +1241,7 @@ static void USART2_Init_IRS(void)
 	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	
 	/* USART2 RX Init DMA (DMA_BISS2_UART_RX -> DMA1, LL_DMA_CHANNEL_5)*/
+	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_RX, LL_DMAMUX_REQ_USART2_RX);
   LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
   LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_RX, LL_DMA_PRIORITY_LOW);
@@ -1271,6 +1252,7 @@ static void USART2_Init_IRS(void)
   LL_DMA_SetMemorySize(DMA_BISS2_UART_RX, LL_DMA_MDATAALIGN_BYTE);
 	
 	/* USART2 TX Init DMA (DMA_BISS2_UART_TX -> DMA1, LL_DMA_CHANNEL_6)*/
+	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
 	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_TX, LL_DMAMUX_REQ_USART2_TX);
   LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
   LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_TX, LL_DMA_PRIORITY_LOW);
@@ -1281,6 +1263,7 @@ static void USART2_Init_IRS(void)
   LL_DMA_SetMemorySize(DMA_BISS2_UART_TX, LL_DMA_MDATAALIGN_BYTE);
 	
 	/* USART2 Configuration */
+	USART_InitStruct.PrescalerValue = LL_USART_PRESCALER_DIV1;
 	USART_InitStruct.BaudRate = 460800;      // Baud rate
 	USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
 	USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
@@ -1290,7 +1273,14 @@ static void USART2_Init_IRS(void)
 	USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
 	
 	// Init USART2
-	LL_USART_Init(USART2, &USART_InitStruct); 
+	LL_USART_Init(USART2, &USART_InitStruct);
+  LL_USART_EnableDEMode(USART2);
+  LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
+//  LL_USART_SetDEAssertionTime(USART2, 0);
+//  LL_USART_SetDEDeassertionTime(USART2, 0);
+	LL_USART_SetDEAssertionTime(BISS2_UART, 16U);
+	LL_USART_SetDEDeassertionTime(BISS2_UART, 16U);
+  LL_USART_ConfigAsyncMode(USART2);
 	
 	// Enable USART2
 	LL_USART_Enable(USART2);
@@ -1298,20 +1288,21 @@ static void USART2_Init_IRS(void)
 	}
 }
 
-static void USART2_Config_IRS(void)
+static void USART2_Config_IRS(void) 
 {
-	LL_TIM_EnableIT_UPDATE(BISS_Task_TIM);
-	LL_TIM_EnableCounter(BISS_Task_TIM);
-	LL_DMA_SetMemoryAddress(DMA_BISS2_UART_RX, (uint32_t)usart2_rx_buffer);
-	LL_DMA_SetPeriphAddress(DMA_BISS2_UART_RX, (uint32_t)&USART2->RDR);
+	/* Enable Power2 Enc PIN */
+	EncoderSecondPowerEnable();
+
+	/* Init setup DMA/UART RX */	
+	LL_DMA_SetPeriphAddress(DMA_BISS2_UART_RX, (uint32_t) &BISS2_UART->RDR);
+	LL_DMA_SetMemoryAddress(DMA_BISS2_UART_RX, (uint32_t) usart2_rx_buffer);
 	LL_DMA_SetDataLength(DMA_BISS2_UART_RX, RX_BUF_SIZE);
-	LL_DMA_SetMemoryAddress(DMA_BISS2_UART_TX, (uint32_t)usart2_tx_buffer);
-	LL_DMA_SetPeriphAddress(DMA_BISS2_UART_TX, (uint32_t)&USART2->TDR);
-	// LL_DMA_SetDataLength(DMA_BISS2_UART_TX, TX_BUF_SIZE);
-	LL_USART_EnableDMAReq_TX(USART2);
-	LL_USART_EnableDMAReq_RX(USART2);
+	
+	LL_DMA_SetPeriphAddress(DMA_BISS2_UART_TX, (uint32_t) &BISS2_UART->TDR);
+	LL_DMA_SetMemoryAddress(DMA_BISS2_UART_TX, (uint32_t) usart2_tx_buffer);
+	
+	LL_USART_EnableDMAReq_RX(BISS2_UART);
 	LL_DMA_EnableChannel(DMA_BISS2_UART_RX);
-	// LL_DMA_EnableChannel(DMA_BISS2_UART_TX);
 }
 
 /**
