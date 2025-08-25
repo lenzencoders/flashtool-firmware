@@ -137,12 +137,8 @@ static const uint8_t CRC6_LUT[256U] = {
  * @param data including position data, error and warning bits
  * @return uint8_t CRC6, poly 0x43, inverted
  */
-/* DEBUG */
-volatile uint8_t crc = 0;
-/* DEBUG */
 __STATIC_INLINE uint8_t BISS_CRC6_Calc(uint32_t data){	
-//	uint8_t crc = CRC6_LUT[(data >> 24U) & 0x3U];
-	crc = CRC6_LUT[(data >> 24U) & 0x3U];
+	uint8_t crc = CRC6_LUT[(data >> 24U) & 0x3U];
 	crc = CRC6_LUT[((data >> 16U) & 0xFFU) ^ crc];
 	crc = CRC6_LUT[((data >> 8U) & 0xFFU) ^ crc];
 	crc = CRC6_LUT[(data & 0xFFU) ^ crc];
@@ -152,6 +148,7 @@ __STATIC_INLINE uint8_t BISS_CRC6_Calc(uint32_t data){
 
 static void USART2_Init_IRS(void);
 static void USART2_Config_IRS(void);
+static void USART2_DeInit_IRS(void);
 static void USART2_IRS_Transmit(uint8_t* data, uint8_t length);
 static void USART2_IRS_Receive(uint8_t* data, uint8_t length);
 static void Reenable_USART2_RX(void);
@@ -160,9 +157,9 @@ static void BISS1_SPI_Init(void);
 static void BISS1_SPI_DeInit(void);
 static void BISS2_SPI_Init(void);
 static void BISS2_SPI_DeInit(void);
-static void BISS_UART_Init(void);
-static void BISS_UART_DeInit(void);
 static void USART2_UART_Init(void);
+static void BISS_UART_Init(void);
+static void USART2_UART_DeInit(void);
 static void MX_TIM3_ENC_Init(void);
 static void Quadrature_Renishaw_Init(void);
 static void Quadrature_Renishaw_DeInit(void);
@@ -201,7 +198,6 @@ static void BiSS1_SPI_nCDM_Req(void){
 	LL_SPI_DeInit(BISS1_SPI);
 	BISS1_SPI->CR1 = SPI_CR1_BISS_nCDM;
 	BISS1_SPI->CR2 = SPI_CR2_BISS_CFG;
-	// #ifdef CH1_SPI_MODE
 	switch(CH1_SPI_MODE){
 		case CH1_LENZ_BISS:
 			LL_DMA_SetDataLength(DMA_BISS1_TX, 5U); // TODO try 1U via define
@@ -395,7 +391,6 @@ void BISS_Task_IRQHandler(void) {
 							BISS1_SCD = 0;
 						break;
 					}
-					//BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
 					if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
 						CRC6_State1 = CRC6_OK;
 						AngleData1.angle_data = BISS1_SCD >> 8;
@@ -441,7 +436,6 @@ void BISS_Task_IRQHandler(void) {
 			switch(BiSS_SPI_Ch){
 				case BISS_SPI_CH_1:
 					if(CH1_SPI_MODE == CH1_LENZ_BISS){
-						// #ifndef CH1_SSI
 						if (BiSS_C_Master_StateMachine(BiSS1_SPI_rx.CDS) == CDM) {					
 							BiSS1_SPI_CDM_Req();
 						}
@@ -449,7 +443,6 @@ void BISS_Task_IRQHandler(void) {
 							BiSS1_SPI_nCDM_Req();
 						}
 						BiSS2_SPI_nCDM_Req();
-						// #endif
 					}
 					break;
 				case BISS_SPI_CH_2:
@@ -460,16 +453,12 @@ void BISS_Task_IRQHandler(void) {
 						BiSS2_SPI_nCDM_Req();
 					}
 					if(CH1_SPI_MODE == CH1_LENZ_BISS){
-						// #ifndef CH1_SSI
 						BiSS1_SPI_nCDM_Req();
-						// #endif
 					}
 					break;
 				default:
 					if(CH1_SPI_MODE == CH1_LENZ_BISS){
-						// #ifndef CH1_SSI
 						BiSS1_SPI_nCDM_Req();
-						// #endif
 					}
 					BiSS2_SPI_nCDM_Req();
 					break;
@@ -547,7 +536,6 @@ void BISS_Task_IRQHandler(void) {
 				else {
 					BiSS2_SPI_nCDM_Req();
 				}
-				// BiSS1_SPI_nCDM_Req();
 			}
 			if (LL_TIM_IsActiveFlag_UPDATE(TIM_RENISHAW)) {
 				AngleDataRenishaw.angle_data = LL_TIM_GetCounter(TIM_RENISHAW);
@@ -581,7 +569,6 @@ void BISS_Task_IRQHandler(void) {
 				else {
 					BiSS2_SPI_nCDM_Req();
 				}
-				// BiSS1_SPI_nCDM_Req();
 			}
 			break;
 	}
@@ -607,8 +594,6 @@ void Current_Sensor_Init(void){
 }
 
 void BiSS_C_Master_HAL_Init(void){
-//	LED1TurnRed();
-//	LED2TurnRed();
 	switch(Current_Mode){
 		case BISS_MODE_SPI_SPI:
 			LED1TurnRed();
@@ -745,23 +730,15 @@ static void BISS1_SPI_Init(void)
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS1_SPI_GRP_EN();
-		
-	/* Disable UartPin*/
-	
-	// LL_GPIO_SetPinMode(BISS_MA_UART_PIN, LL_GPIO_MODE_ANALOG);
+
+	/* Enable PWR1 - PA8/PB0 PIN */
+	EncoderPowerEnable();
 	
   /**SPI1 GPIO Configuration
   MA1_PIN		------> SPI_SCK		------>	PA5
   SLO1_PIN  ------> SPI_MISO	------>	PA6
 	DE1_PIN		------>	SPI_DE1 	------>	PA10
   */	
-	
-	/* Enable PWR1 - PA8/PB0 PIN */
-	EncoderPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
-//	LL_GPIO_SetPinMode(PWR1_EN_PIN.port, PWR1_EN_PIN.pin, LL_GPIO_MODE_OUTPUT);
-//	LL_GPIO_SetPinOutputType(PWR1_EN_PIN.port, PWR1_EN_PIN.pin, LL_GPIO_OUTPUT_PUSHPULL);
-	
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
 	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
@@ -789,20 +766,6 @@ static void BISS1_SPI_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-	/*
-	LL_GPIO_SetOutputPin(DE1_PIN);
-	LL_GPIO_SetPinMode(DE1_PIN, LL_GPIO_MODE_OUTPUT);
-	LL_GPIO_SetPinOutputType(DE1_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	
-	LL_GPIO_SetPinMode(MA1_PIN, LL_GPIO_MODE_ALTERNATE);
-	LL_GPIO_SetOutputPin(MA1_PIN);
-	LL_GPIO_SetPinOutputType(MA1_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	
-	LL_GPIO_SetPinMode(SLO1_PIN, LL_GPIO_MODE_ALTERNATE);
-	
-	BISS1_GPIO_SET_AF();
-	*/
 
   /* SPI1 DMA Init */
 
@@ -869,10 +832,6 @@ static void _BISS2_SPI_Init(void)
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS2_SPI_GRP_EN();
-		
-	/* Disable UartPin*/
-	
-//	LL_GPIO_SetPinMode(BISS_MA_UART_PIN, LL_GPIO_MODE_ANALOG);
 	
   /**SPI2 GPIO Configuration
   MA2_PIN   ------> SPI_SCK
@@ -945,29 +904,15 @@ static void BISS2_SPI_Init(void)
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS2_SPI_GRP_EN();
-		
-	/* Disable UartPin*/
 	
-	// LL_GPIO_SetPinMode(BISS_MA_UART_PIN, LL_GPIO_MODE_ANALOG);
+	/* Enable PWR2 - PB7 PIN */
+	EncoderSecondPowerEnable();
 	
   /**SPI2 GPIO Configuration
   MA2_PIN   ------> SPI_SCK 	------>	PB3
   SLO2_PIN  ------> SPI_MISO 	------>	PB4
 	DE2_PIN		------>	SPI_DE2  	------>	PA1
   */
-	
-	/* Enable PWR2 - PB7 PIN */
-	EncoderSecondPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR2_EN_PIN);
-//	LL_GPIO_SetPinMode(PWR2_EN_PIN, LL_GPIO_MODE_OUTPUT);
-//	LL_GPIO_SetPinOutputType(PWR2_EN_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-		
-	/*
-	LL_GPIO_SetOutputPin(DE2_PIN);
-	LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_OUTPUT);
-	LL_GPIO_SetPinOutputType(DE2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	*/
-	
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
 	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
@@ -986,12 +931,6 @@ static void BISS2_SPI_Init(void)
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	/* Enable MA2 - PB3 PIN */
 	LL_GPIO_SetOutputPin(MA2_PIN);
-	
-	/*
-	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ALTERNATE);
-	LL_GPIO_SetOutputPin(MA2_PIN);
-	LL_GPIO_SetPinOutputType(MA2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	*/
 
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -1000,11 +939,6 @@ static void BISS2_SPI_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	
-	/*
-	LL_GPIO_SetPinMode(SLO2_PIN, LL_GPIO_MODE_ALTERNATE);
-	BISS2_GPIO_SET_AF();
-	*/
 
   /* SPI2 DMA Init */
 
@@ -1164,13 +1098,6 @@ static void BISS_UART_Init(void)
 {
 	/* Enable Power2 Enc PIN */
 	EncoderSecondPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR2_EN_PIN);
-	//LL_GPIO_SetPinMode(PWR2_EN_PIN, LL_GPIO_MODE_OUTPUT);
-	//LL_GPIO_SetPinOutputType(PWR2_EN_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-	
-	//LL_GPIO_ResetOutputPin(DE2_PIN); 
-	//LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_OUTPUT);
-	//LL_GPIO_SetPinOutputType(DE2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
 	
 	LL_USART_Disable(BISS2_UART);		
 	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ALTERNATE); // LL_GPIO_MODE_ANALOG
@@ -1188,8 +1115,8 @@ static void BISS_UART_Init(void)
 	//LL_DMA_SetDataLength(DMA_BISS2_UART_TX, 4);                  							// Number of bytes to send
 	//LL_USART_EnableDMAReq_TX(BISS2_UART);																			// Enable DMA for USART TX
 	
-	LL_USART_SetDEAssertionTime(BISS2_UART, 2U); // TODO: 16U
-	LL_USART_SetDEDeassertionTime(BISS2_UART, 2U);
+	LL_USART_SetDEAssertionTime(BISS2_UART, 16U);
+	LL_USART_SetDEDeassertionTime(BISS2_UART, 16U);
 	LL_USART_Enable(BISS2_UART);		
 	LL_DMA_EnableChannel(DMA_BISS2_UART_RX);
 	//LL_DMA_EnableChannel(DMA_BISS2_UART_TX);                                  // Enable DMA TX channel
@@ -1276,8 +1203,6 @@ static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
 	LL_USART_Init(USART2, &USART_InitStruct);
   LL_USART_EnableDEMode(USART2);
   LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
-//  LL_USART_SetDEAssertionTime(USART2, 0);
-//  LL_USART_SetDEDeassertionTime(USART2, 0);
 	LL_USART_SetDEAssertionTime(BISS2_UART, 16U);
 	LL_USART_SetDEDeassertionTime(BISS2_UART, 16U);
   LL_USART_ConfigAsyncMode(USART2);
@@ -1497,10 +1422,8 @@ static void MX_ADC1_Init(void)
 	PWR1_EN_PIN.pin = LL_GPIO_PIN_8;
 	/* Enable PWR1 - PA8 PIN */
 //	EncoderPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 
   /* USER CODE END ADC1_Init 2 */
-
 }
 
 static void Config_ADC1(void)
@@ -1565,7 +1488,6 @@ static void ADC1_DeInit(void)
 	PWR1_EN_PIN.pin = LL_GPIO_PIN_0;
 	/* Enable PWR1 - PB0 PIN */
 	EncoderPowerDisable();
-//	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 	
 	/* Disable PA8 PIN */
 	LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_8);
@@ -1583,7 +1505,7 @@ static void ADC1_DeInit(void)
 int32_t Read_Current_Enc2(void){
 	uint16_t adc_value = adc1_buffer[0] >> 4;
 	if (adc_value > ADC_MAX){
-				adc_value = ADC_MAX; // Prevent overflow
+				adc_value = ADC_MAX;
 	}
 	return (((adc_value * VREF) / ADC_MAX) * CURRENT_GAIN) / 1000;
 }
@@ -1591,9 +1513,8 @@ int32_t Read_Current_Enc2(void){
 static void Quadrature_Renishaw_Init(void){
 	/* Disable DE1 - PA10 PIN */ 
 	LL_GPIO_ResetOutputPin(DE1_PIN);
-	/* Enable PWR1 */
+	/* Enable PWR1 - PB0 PIN */
 	EncoderPowerEnable();
-//	LL_GPIO_SetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 	/* Enable TIM_RENISHAW - TIM3 counter */
 	LL_TIM_SetCounter(TIM_RENISHAW, 0);
 	LL_TIM_EnableCounter(TIM_RENISHAW);
@@ -1605,7 +1526,6 @@ static void BISS1_SPI_DeInit(void){
 	LL_GPIO_SetPinMode(SLO1_PIN, LL_GPIO_MODE_ANALOG);
 	LL_GPIO_SetPinMode(SLO1_PIN, LL_GPIO_MODE_ANALOG);
 	EncoderPowerDisable();
-//	LL_GPIO_ResetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 	LL_GPIO_ResetOutputPin(DE1_PIN);
 	LL_SPI_Disable(BISS1_SPI);
 	LL_SPI_Disable(BISS1_SPI);
@@ -1620,7 +1540,6 @@ static void BISS2_SPI_DeInit(void){
 	LL_GPIO_SetPinMode(SLO2_PIN, LL_GPIO_MODE_ANALOG);
 	LL_GPIO_SetPinMode(SLO2_PIN, LL_GPIO_MODE_ANALOG);
 	EncoderSecondPowerDisable();
-//	LL_GPIO_ResetOutputPin(PWR2_EN_PIN);
 	LL_GPIO_ResetOutputPin(DE2_PIN);
 	LL_SPI_Disable(BISS2_SPI);
 	LL_SPI_Disable(BISS2_SPI);
@@ -1629,7 +1548,14 @@ static void BISS2_SPI_DeInit(void){
 	memset((void*)BiSS2_SPI_rx.buf, 0, sizeof(BiSS2_SPI_rx.buf));
 }
 
-static void BISS_UART_DeInit(void){
+static void USART2_UART_DeInit(void){
+	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(BISS_MA_UART_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(BISS_MA_UART_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_ANALOG);
+	EncoderSecondPowerDisable();
 	LL_USART_Disable(BISS2_UART);
 	LL_USART_Disable(BISS2_UART);
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
@@ -1643,7 +1569,6 @@ static void Quadrature_Renishaw_DeInit(void){
 	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_ANALOG);
 	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_ANALOG);
 	EncoderPowerDisable();
-//	LL_GPIO_ResetOutputPin(PWR1_EN_PIN.port, PWR1_EN_PIN.pin);
 	LL_GPIO_ResetOutputPin(DE1_PIN);
 	LL_TIM_DisableCounter(TIM_RENISHAW);
 	LL_TIM_DisableCounter(TIM_RENISHAW);
@@ -1651,26 +1576,29 @@ static void Quadrature_Renishaw_DeInit(void){
 	LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_TIM3);
 }
 
-static void BISS_USART2_DeInit(void){
+static void USART2_DeInit_IRS(void){
+	LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(DE2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(MA2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(SLO2_PIN, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(SLO2_PIN, LL_GPIO_MODE_ANALOG);
+	EncoderSecondPowerDisable();
 	LL_USART_Disable(BISS2_UART);
 	LL_USART_Disable(BISS2_UART);
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
-	EncoderSecondPowerDisable();
-//	LL_GPIO_ResetOutputPin(PWR2_EN_PIN);
 	LL_GPIO_ResetOutputPin(DE2_PIN);
 	memset((void*)usart2_tx_buffer, 0, TX_BUF_SIZE);
 	memset((void*)usart2_rx_buffer, 0, RX_BUF_SIZE);
 }
 
 void SetBiSS_SPI_Ch(BiSS_SPI_Ch_t ch_to_set){
-	// #ifndef CH1_SPI_MODE
 	if(CH1_SPI_MODE == CH1_LENZ_BISS){
 		if(IsBiSSReqBusy() == BISS_REQ_OK){
 			BiSS_SPI_Ch = ch_to_set;
 		}	
 	}	
-	// #endif
 }
 
 void Set_Ch1_Mode(CH1_SPI_mode_t New_Mode){
@@ -1693,8 +1621,6 @@ void Set_Ch1_Mode(CH1_SPI_mode_t New_Mode){
 }
 
 void Stop_Current_Mode(void){
-//	LED1TurnRed();
-//	LED2TurnRed();
 	LED1TurnOff();
 	LED2TurnOff();
 	if(Current_Mode == BISS_MODE_SPI_SPI){
@@ -1702,10 +1628,10 @@ void Stop_Current_Mode(void){
 		BISS2_SPI_DeInit();
 	}else if(Current_Mode == BISS_MODE_AB_UART){
 		Quadrature_Renishaw_DeInit();
-		BISS_UART_DeInit();
+		USART2_UART_DeInit();
 	} else if(Current_Mode == BISS_MODE_SPI_UART_IRS){
 		BISS1_SPI_DeInit();
-		BISS_USART2_DeInit();
+		USART2_DeInit_IRS();
 	} else if(Current_Mode == BISS_MODE_AB_SPI){
 		Quadrature_Renishaw_DeInit();
 		BISS2_SPI_DeInit();
