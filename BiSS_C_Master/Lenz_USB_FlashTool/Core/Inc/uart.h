@@ -13,16 +13,6 @@ extern "C" {
 #endif
 	
 #include "stdint.h"
-#include "string.h"
-#include "stm32g4xx_ll_lpuart.h"
-#include "stm32g4xx_ll_dma.h"
-#include "stm32g4xx_ll_tim.h"
-#include "stm32g4xx_ll_gpio.h"
-#include "main.h"
-#include "hw_cfg.h"
-#include "biss_c_master.h"
-#include "biss_c_master_hal.h"
-#include "tamp_access.h"
 
 //move to c
 

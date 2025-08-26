@@ -114,7 +114,6 @@ int main(void)
   
 	/* USER CODE BEGIN 2 */
 
-//	UART_Config();
 	TAMP_Init();
 	Stay_in_FW_Config();
 	Current_Sensor_Init();

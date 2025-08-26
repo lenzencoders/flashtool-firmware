@@ -6,6 +6,17 @@
  * @copyright Lenz Encoders (c) 2024
  */
 #include "uart.h"
+#include "string.h"
+#include "stm32g4xx_ll_lpuart.h"
+#include "stm32g4xx_ll_dma.h"
+#include "stm32g4xx_ll_tim.h"
+#include "stm32g4xx_ll_gpio.h"
+#include "main.h"
+#include "hw_cfg.h"
+#include "biss_c_master.h"
+#include "biss_c_master_hal.h"
+#include "tamp_access.h"
+
 
 //#define UART_LINE_SIZE		133U
 #define HEXLEN_ADR_CMD_CRC_LEN								5U // Length of data (1) + Address (2) + Cmd (1) + CRC (1) bytes
