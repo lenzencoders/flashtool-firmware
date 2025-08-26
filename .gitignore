@@ -8,7 +8,6 @@
 # Build outputs
 *.axf
 *.elf
-*.hex
 *.bin
 *.map
 *.lst
