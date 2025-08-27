@@ -3,6 +3,7 @@
 "lenz_usb_flashtool\uart.o"
 "lenz_usb_flashtool\main.o"
 "lenz_usb_flashtool\stm32g4xx_it.o"
+"lenz_usb_flashtool\tamp_access.o"
 "lenz_usb_flashtool\stm32g4xx_ll_utils.o"
 "lenz_usb_flashtool\stm32g4xx_ll_exti.o"
 "lenz_usb_flashtool\stm32g4xx_ll_gpio.o"

@@ -1,5 +1,6 @@
 lenz_usb_flashtool/uart.o: ..\Core\Src\uart.c ..\Core\Inc\uart.h \
-  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h ..\Core\Inc\hw_cfg.h \
+  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_lpuart.h \
   ..\Drivers\CMSIS\Device\ST\STM32G4xx\Include\stm32g4xx.h \
   ..\Drivers\CMSIS\Device\ST\STM32G4xx\Include\stm32g431xx.h \
@@ -15,6 +16,19 @@ lenz_usb_flashtool/uart.o: ..\Core\Src\uart.c ..\Core\Inc\uart.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_dmamux.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_tim.h \
   ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_gpio.h \
-  C:\Keil_v5\ARM\ARMCLANG\Bin\..\include\string.h \
-  ..\..\lib\BiSS_C_Master\biss_c_master.h \
-  ..\..\lib\BiSS_C_Master\biss_c_master_hal.h
+  ..\Core\Inc\main.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_adc.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_cordic.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_rcc.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_bus.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_crs.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_system.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_exti.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_cortex.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_utils.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_pwr.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_spi.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_usart.h \
+  ..\Core\Inc\hw_cfg.h ..\..\lib\BiSS_C_Master\biss_c_master.h \
+  ..\..\lib\BiSS_C_Master\biss_c_master_hal.h ..\Core\Inc\tamp_access.h \
+  ..\Drivers\STM32G4xx_HAL_Driver\Inc\stm32g4xx_ll_rtc.h
