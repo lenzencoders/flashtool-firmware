@@ -23,7 +23,7 @@
 #define HEX_DATA_LEN													128U
 #define UART_LINE_SIZE												HEXLEN_ADR_CMD_CRC_LEN + HEX_DATA_LEN
 #define QUEUE_SIZE 														36U //FIFO
-#define MAX_RETRY															3U
+#define MAX_RETRY															28U
 #define UART_ANGLE_LEN 												60U // 60U --> Encoder
 #define UART_ANGLE_BUF_SIZE 									(UART_ANGLE_LEN * 4U) // *4U --> Encoder
 #define UART_ANGLE_TWO_ENC_LEN 								30U // 30U --> Encoder1 + Encoder2
@@ -425,21 +425,18 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, ui
 	if (IsBiSSReqBusy() != BISS_BUSY) {
 		if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK) {
 			complete_command_processing();
-//			UART_State = UART_STATE_IDLE;
-//			queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//			queue_cnt--;
 			retry_cnt = 0;
-		// DEBUG START //
 			} else {
 				retry_cnt++;
 				if (retry_cnt >= MAX_RETRY) {
 					UART_Error = UART_ERROR_BISS_WRITE_FAULT;
 					UART_State = UART_STATE_ABORT;
 					retry_cnt = 0;
+					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+					queue_cnt--;
 				}
 			}
 		}
-		// DEBUG END //
 				
 //											if (retry_cnt >= MAX_RETRY) {
 //												if(BiSSGetFaultState() == BISS_NO_FAULTS) {
@@ -475,17 +472,17 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UAR
 		if (BiSSRequestRead(cmd_addr, cmd_data_len, UART_TX.Buf) == BISS_REQ_OK) {
 			complete_command_processing();
 			retry_cnt = 0;
-	// DEBUG START //
 		} else {
 			retry_cnt++;
 			if (retry_cnt >= MAX_RETRY) {
 				UART_Error = UART_ERROR_BISS_READ_FAULT;
 				UART_State = UART_STATE_ABORT;
 				retry_cnt = 0;
+				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+				queue_cnt--;
 			}
 		}
 	}
-	// DEBUG END //
 					
 //											} else {
 //												retry_cnt++;
@@ -1070,7 +1067,7 @@ static void handle_abort_state(void) {
 			break;
 	}
 	
-	UART_Error = UART_ERROR_NONE;
+//	UART_Error = UART_ERROR_NONE;
 	UART_State = UART_STATE_IDLE;
 }
 
