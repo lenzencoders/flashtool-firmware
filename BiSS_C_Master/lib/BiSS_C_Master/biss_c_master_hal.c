@@ -1560,7 +1560,8 @@ static void USART2_UART_DeInit(void){
 	LL_USART_Disable(BISS2_UART);
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
-	memset((void*)USART_rx.u32, 0, sizeof(USART_rx.u32));
+	LL_GPIO_ResetOutputPin(DE2_PIN);
+	memset((void*)&USART_rx, 0, sizeof(USART_rx));
 }	
 
 static void Quadrature_Renishaw_DeInit(void){
