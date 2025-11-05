@@ -23,7 +23,7 @@
 #define HEX_DATA_LEN													128U
 #define UART_LINE_SIZE												HEXLEN_ADR_CMD_CRC_LEN + HEX_DATA_LEN
 #define QUEUE_SIZE 														36U //FIFO
-#define MAX_RETRY															28U
+#define MAX_RETRY															3U
 #define UART_ANGLE_LEN 												60U // 60U --> Encoder
 #define UART_ANGLE_BUF_SIZE 									(UART_ANGLE_LEN * 4U) // *4U --> Encoder
 #define UART_ANGLE_TWO_ENC_LEN 								30U // 30U --> Encoder1 + Encoder2
@@ -209,10 +209,11 @@ void JumpToBootloader(void) {
 
 QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
 	if (queue_cnt < QUEUE_SIZE){
-		CommandQueue[queue_read_cnt].len = len;
-		CommandQueue[queue_read_cnt].addr = addr;
-		CommandQueue[queue_read_cnt].cmd = cmd;
-		memcpy(CommandQueue[queue_read_cnt].data, data, len);
+		CommandQueue[queue_write_cnt].len = len;
+		CommandQueue[queue_write_cnt].addr = addr;
+		CommandQueue[queue_write_cnt].cmd = cmd;
+		memcpy(CommandQueue[queue_write_cnt].data, data, len);
+		queue_write_cnt = (queue_write_cnt + 1U) % QUEUE_SIZE;
 		queue_cnt++;
 		return QUEUE_OK;
 	}
@@ -432,8 +433,9 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, ui
 					UART_Error = UART_ERROR_BISS_WRITE_FAULT;
 					UART_State = UART_STATE_ABORT;
 					retry_cnt = 0;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+//					BiSSResetExternalState();
+//					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+//					queue_cnt--;
 				}
 			}
 		}
@@ -478,8 +480,9 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UAR
 				UART_Error = UART_ERROR_BISS_READ_FAULT;
 				UART_State = UART_STATE_ABORT;
 				retry_cnt = 0;
-				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-				queue_cnt--;
+//				BiSSResetExternalState();
+//				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+//				queue_cnt--;
 			}
 		}
 	}
@@ -1064,6 +1067,9 @@ static void handle_abort_state(void) {
 			break;
 		
 		default:
+			__NOP();
+			__NOP();
+			__NOP();
 			break;
 	}
 	
