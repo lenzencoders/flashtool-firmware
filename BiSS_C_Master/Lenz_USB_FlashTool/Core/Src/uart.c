@@ -891,7 +891,7 @@ static void handle_reading_encoder_spi_spi_state(void) {
 		AngleData_t angle_data1 = getAngle1();
 		AngleData_t angle_data2 = getAngle2();
 
-		if(angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) {
+		if((angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) || (angle_data1.time_of_life_counter != ReadingStrEnc1.ToL_cnt)) {
 			
 			ReadingStrEnc1.ToL_cnt = angle_data1.time_of_life_counter;
 			ReadingStrEnc1.AngleFIFO[ReadingStrEnc1.FIFO_current_ptr] = angle_data1;
@@ -917,7 +917,9 @@ static void handle_reading_encoder_spi_spi_state(void) {
 				UART_TX.adr_l = ReadingStrEnc2.len & 0xFFU;
 				UART_Transmit(&UART_TX);
 			}
-		}
+		} else {
+			UART_State = UART_STATE_IDLE;
+		}			
 	}	else {
 		UART_State = UART_STATE_IDLE;
 	}
