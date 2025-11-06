@@ -39,8 +39,18 @@
 
 // #define PWR1_EN_PIN		GPIOA, LL_GPIO_PIN_8
 
-static volatile enum {RS485_ADR1, RS485_ADR2} RS485_ADR = RS485_ADR2;
+static volatile enum {
+    RS485_ADR1, 
+    RS485_ADR2,
+    RS485_ADR3,
+    RS485_ADR4,
+    RS485_ADR5,
+    RS485_ADR6,
+    RS485_ADR7
+} RS485_ADR = RS485_ADR2;
+
 static volatile uint8_t adr_reset_cou = 0;
+
 typedef enum{
 	RS485_CDM_ADR1_REQ = 0x81U,
 	RS485_CDM_ADR2_REQ = 0x22U,
@@ -275,13 +285,28 @@ void BissRequest_CDM(void){
 			LL_DMA_SetDataLength(DMA_BISS2_UART_RX, 4U);
 			LL_DMA_EnableChannel(DMA_BISS2_UART_RX);	 
 			switch(RS485_ADR){
-				case RS485_ADR1:
-					LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR1_REQ);
-					break;
-				case RS485_ADR2:
-					LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR2_REQ);
-					break;
-			}
+                case RS485_ADR1:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR1_REQ);
+                    break;
+                case RS485_ADR2:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR2_REQ);
+                    break;
+                case RS485_ADR3:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR3_REQ);
+                    break;
+                case RS485_ADR4:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR4_REQ);
+                    break;
+                case RS485_ADR5:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR5_REQ);
+                    break;
+                case RS485_ADR6:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR6_REQ);
+                    break;
+                case RS485_ADR7:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR7_REQ);
+                    break;
+            }
 			break;
 		case BISS_MODE_SPI_UART_IRS:
 			break;
@@ -311,7 +336,22 @@ void BissRequest_nCDM(void){
 				case RS485_ADR2:
 					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR2_REQ);
 					break;
-			}
+				case RS485_ADR3:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR3_REQ);
+					break;
+				case RS485_ADR4:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR4_REQ);
+					break;
+				case RS485_ADR5:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR5_REQ);
+					break;
+				case RS485_ADR6:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR6_REQ);
+					break;
+				case RS485_ADR7:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR7_REQ);
+					break;
+            }
 			break;
 		case BISS_MODE_SPI_UART_IRS:
 			break;
@@ -492,7 +532,7 @@ void BISS_Task_IRQHandler(void) {
 				LED2TurnRed();
 				adr_reset_cou++;
 				if(adr_reset_cou == 255) {
-					RS485_ADR = RS485_ADR == RS485_ADR1? RS485_ADR2 : RS485_ADR1;
+					RS485_ADR = (RS485_ADR + 1) % 7;
 				}
 				if(last_CDM == CDM) {
 					BissRequest_CDM();
