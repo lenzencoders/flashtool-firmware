@@ -844,8 +844,7 @@ static void handle_run_command_state(void) {
 				break;
 						
 			default:
-				complete_command_processing();
-//				UART_State = UART_STATE_ABORT;
+				UART_State = UART_STATE_ABORT;
 				break;
 		}
 	}
