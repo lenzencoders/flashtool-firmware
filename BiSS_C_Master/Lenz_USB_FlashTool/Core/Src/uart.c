@@ -66,6 +66,7 @@ typedef enum{
 	UART_ERROR_BISS_READ_FAULT = 0x05U,
 	UART_ERROR_LEN_DATA_IS_ZERO = 0x06U,
 	UART_ERROR_LEN_IS_NOT_CORRECT = 0x07U,
+	UART_ERROR_INVALID_CMD = 0x08U,
 }UART_Error_t;
 
 volatile enum{
@@ -844,6 +845,7 @@ static void handle_run_command_state(void) {
 				break;
 						
 			default:
+				UART_Error = UART_ERROR_INVALID_CMD;
 				UART_State = UART_STATE_ABORT;
 				break;
 		}
@@ -1066,6 +1068,11 @@ static void handle_abort_state(void) {
 			UART_TX.adr_l = 0;
 			UART_TX.Buf[0] = (uint8_t)UART_Error;
 			UART_Transmit(&UART_TX);
+			break;
+		
+		case UART_ERROR_INVALID_CMD:
+			queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+			queue_cnt--;
 			break;
 		
 		default:
