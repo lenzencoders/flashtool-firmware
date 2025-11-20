@@ -882,6 +882,8 @@ static void handle_reading_encoder_ab_spi_state(void) {
 				UART_TX.adr_l = ReadingStrEnc2.len & 0xFFU;
 				UART_Transmit(&UART_TX);
 			}
+		} else {
+			UART_State = UART_STATE_IDLE;
 		}
 	} else {
 		UART_State = UART_STATE_IDLE;
@@ -957,6 +959,8 @@ static void handle_reading_encoder_ab_uart_state(void) {
 				UART_TX.adr_l = ReadingStrEnc2.len & 0xFFU;
 				UART_Transmit(&UART_TX);
 			}
+		} else {
+			UART_State = UART_STATE_IDLE;
 		}
 	} else {
 		UART_State = UART_STATE_IDLE;
@@ -983,6 +987,8 @@ static void handle_reading_encoder_spi_state(void) {
 					UART_TX.adr_l = ReadingStrEnc1.len & 0xFFU;
 					UART_Transmit(&UART_TX);
 				}
+			} else {
+				UART_State = UART_STATE_IDLE;
 			}
 		} else {
 				UART_State = UART_STATE_IDLE;
@@ -1007,6 +1013,8 @@ static void handle_reading_encoder_spi_state(void) {
 					UART_TX.adr_l = ReadingStrEnc2.len & 0xFFU;
 					UART_Transmit(&UART_TX);
 				}
+			} else {
+				UART_State = UART_STATE_IDLE;
 			}
 		} else {
 				UART_State = UART_STATE_IDLE;
