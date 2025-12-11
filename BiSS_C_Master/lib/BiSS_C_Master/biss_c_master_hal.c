@@ -118,6 +118,8 @@ volatile uint32_t BISS1_SCD;
 volatile uint32_t BISS2_SCD;
 volatile AngleData_t AngleData1;
 volatile AngleData_t AngleData2;
+volatile AnglePacket_t AnglePacket1;
+volatile AnglePacket_t AnglePacket2;
 volatile AngleDataRenishaw_t AngleDataRenishaw;
 volatile CRC_State_t CRC6_State1 = CRC6_FAULT;
 volatile CRC_State_t CRC6_State2 = CRC6_FAULT;
@@ -375,6 +377,10 @@ void BISS_Task_IRQHandler(void) {
 						CRC6_State1 = CRC6_OK;
 						AngleData1.angle_data = BISS1_SCD >> 8;
 						AngleData1.time_of_life_counter++;
+						AnglePacket1.angle_data = BISS1_SCD >> 8;
+						AnglePacket1.time_of_life_counter++;
+						AnglePacket1.nW_nE = (BISS1_SCD >> 6) & 0x3;
+						AnglePacket1.crc6 = BISS1_SCD & 0x3F;
 						if(((BISS1_SCD >> 6) & 0x3) == 0x3){
 							LED1TurnGreen();
 						}
@@ -462,6 +468,10 @@ void BISS_Task_IRQHandler(void) {
 				CRC6_State2 = CRC6_OK;
 				AngleData2.angle_data = BISS2_SCD >> 8;
 				AngleData2.time_of_life_counter++;
+				AnglePacket2.angle_data = BISS2_SCD >> 8;
+				AnglePacket2.time_of_life_counter++;
+				AnglePacket2.nW_nE = (BISS2_SCD >> 6) & 0x3;
+				AnglePacket2.crc6 = BISS2_SCD & 0x3F;
 				if(((BISS2_SCD >> 6) & 0x3) == 0x3){
  					LED2TurnGreen();
  				}
@@ -558,6 +568,10 @@ void BISS_Task_IRQHandler(void) {
 				CRC6_State2 = CRC6_OK;
 				AngleData2.angle_data = BISS2_SCD >> 8;
 				AngleData2.time_of_life_counter++;
+				AnglePacket2.angle_data = BISS2_SCD >> 8;
+				AnglePacket2.time_of_life_counter++;
+				AnglePacket2.nW_nE = (BISS2_SCD >> 6) & 0x3;
+				AnglePacket2.crc6 = BISS2_SCD & 0x3F;
 				if(((BISS2_SCD >> 6) & 0x3) == 0x3) {
  					LED2TurnGreen();
  				}
@@ -591,6 +605,10 @@ void BISS_Task_IRQHandler(void) {
 				CRC6_State2 = CRC6_OK;
 				AngleData2.angle_data = BISS2_SCD >> 8;
 				AngleData2.time_of_life_counter++;
+				AnglePacket2.angle_data = BISS2_SCD >> 8;
+				AnglePacket2.time_of_life_counter++;
+				AnglePacket2.nW_nE = (BISS2_SCD >> 6) & 0x3;
+				AnglePacket2.crc6 = BISS2_SCD & 0x3F;
 				if(((BISS2_SCD >> 6) & 0x3) == 0x3) {
  					LED2TurnGreen();
  				}

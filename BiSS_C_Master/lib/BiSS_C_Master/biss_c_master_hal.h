@@ -31,6 +31,19 @@ typedef struct{
 } AngleData_t;
 
 /**
+ * @struct AnglePacket_t
+ * @brief Angle Data with time of life counter type, nW, nE, CRC6
+ * 
+ */
+typedef struct{
+    uint32_t angle_data:24; /**< Value of Angle */
+    uint32_t time_of_life_counter:8; /**< Value of time of life counter to check
+	that angle was updated*/
+	uint8_t nW_nE;
+	uint8_t crc6;
+} AnglePacket_t;
+
+/**
  * @struct AngleDataRenishaw_t
  * 
  */
@@ -76,6 +89,21 @@ static inline AngleData_t getAngle1(void){
 static inline AngleData_t getAngle2(void){
 	extern volatile AngleData_t AngleData2;
 	return(AngleData2);
+}
+
+/**
+ * @brief Get the AnglePacket object
+ * 
+ * @return AnglePacket_t 
+ */
+static inline AnglePacket_t getAnglePacket1(void){
+	extern volatile AnglePacket_t AnglePacket1;
+	return(AnglePacket1);
+}
+
+static inline AnglePacket_t getAnglePacket2(void){
+	extern volatile AnglePacket_t AnglePacket2;
+	return(AnglePacket2);
 }
 
 /**

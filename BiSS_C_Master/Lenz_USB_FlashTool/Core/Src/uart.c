@@ -540,6 +540,22 @@ static void handle_read_angle_enc_spi_instant_command(uint8_t cmd_data_len, UART
 	}
 }
 
+static void handle_read_angle_packet_enc_spi_instant_command(uint8_t cmd_data_len, UART_Command_t command) {
+	UART_TX.cmd = command;
+	UART_TX.len = cmd_data_len;
+	UART_TX.adr_h = 0;
+	UART_TX.adr_l = 0;
+	if(BiSS_SPI_Ch == BISS_SPI_CH_2){
+		AnglePacket_t angle_packet2 = getAnglePacket2();
+		*((AnglePacket_t*)&UART_TX.Buf[0]) = angle_packet2;
+		UART_Transmit(&UART_TX);
+	} else if(BiSS_SPI_Ch == BISS_SPI_CH_1){
+		AnglePacket_t angle_packet1 = getAnglePacket1();
+		*((AnglePacket_t*)&UART_TX.Buf[0]) = angle_packet1;
+		UART_Transmit(&UART_TX);
+	}
+}
+
 static void handle_change_current_sensor_mode_command(uint8_t current_mode) {
 	switch (current_mode) {
 		case 0:
@@ -813,6 +829,11 @@ static void handle_run_command_state(void) {
 			
 			case UART_COMMAND_READ_ENC2_CURRENT:
 				handle_read_enc2_current_command(cmd_data_len, command);
+				complete_command_processing();
+				break;
+			
+			case UART_COMMAND_READ_ANGLE_PACKET_ENC_SPI_INSTANT:
+				handle_read_angle_packet_enc_spi_instant_command(cmd_data_len, command);
 				complete_command_processing();
 				break;
 					
