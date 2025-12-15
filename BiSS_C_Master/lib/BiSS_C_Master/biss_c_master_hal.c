@@ -27,14 +27,14 @@
 
 #define SPI_CR1_BISS_CDM    SPI_CR1_SSI | SPI_CR1_SPE | SPI_CR1_MSTR | SPI_CR1_SSM | ((0x5U << SPI_CR1_BR_Pos) & SPI_CR1_BR_Msk)
 #define SPI_CR1_BISS_nCDM   SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_CR1_BISS_CDM
-#define SPI_CR2_BISS_CFG		SPI_CR2_RXDMAEN |SPI_CR2_TXDMAEN | SPI_CR2_FRXTH | (0x7U << SPI_CR2_DS_Pos)
+#define SPI_CR2_BISS_CFG	SPI_CR2_RXDMAEN |SPI_CR2_TXDMAEN | SPI_CR2_FRXTH | (0x7U << SPI_CR2_DS_Pos)
 
-#define RX_BUF_SIZE 252U
-#define TX_BUF_SIZE 252U
-#define ADC_BUF_SIZE 1U
-#define VREF	3300U
-#define ADC_MAX	4095U
-#define CURRENT_GAIN 101753U
+#define RX_BUF_SIZE 	252U
+#define TX_BUF_SIZE 	252U
+#define ADC_BUF_SIZE 	1U
+#define VREF			3300U
+#define ADC_MAX			4095U
+#define CURRENT_GAIN 	101753U
 
 
 // #define PWR1_EN_PIN		GPIOA, LL_GPIO_PIN_8
@@ -779,24 +779,24 @@ static void BISS1_SPI_Init(void)
 {	
 	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 	
-  /* Peripheral clock enable */
+	/* Peripheral clock enable */
 	
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS1_SPI_GRP_EN();
 
 	/* Enable PWR1 - PA8/PB0 PIN */
 	EncoderPowerEnable();
 	
-  /**SPI1 GPIO Configuration
-  MA1_PIN		------> SPI_SCK		------>	PA5
-  SLO1_PIN  ------> SPI_MISO	------>	PA6
+	/**SPI1 GPIO Configuration
+	MA1_PIN		------> SPI_SCK		------>	PA5
+	SLO1_PIN  ------> SPI_MISO	------>	PA6
 	DE1_PIN		------>	SPI_DE1 	------>	PA10
-  */	
+	*/	
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
 	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
@@ -807,47 +807,47 @@ static void BISS1_SPI_Init(void)
 	LL_GPIO_SetOutputPin(DE1_PIN);
 		
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_5;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 	/* Enable MA1 - PA5 PIN */
 	LL_GPIO_SetOutputPin(MA1_PIN);
 	
 	
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_6;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_5;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /* SPI1 DMA Init */
+	/* SPI1 DMA Init */
 
-  /* SPI1_RX Init */
+	/* SPI1_RX Init */
 	LL_DMA_DisableChannel(DMA_BISS1_RX);
-  LL_DMA_SetPeriphRequest(DMA_BISS1_RX, DMA_BISS1_RX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS1_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS1_RX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS1_RX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS1_RX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS1_RX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS1_RX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS1_RX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS1_RX, DMA_BISS1_RX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS1_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS1_RX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS1_RX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS1_RX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS1_RX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS1_RX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS1_RX, LL_DMA_MDATAALIGN_BYTE);
 
-  /* SPI1_TX Init */
+	/* SPI1_TX Init */
 	LL_DMA_DisableChannel(DMA_BISS1_TX);
-  LL_DMA_SetPeriphRequest(DMA_BISS1_TX, DMA_BISS1_TX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS1_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS1_TX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS1_TX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS1_TX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS1_TX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS1_TX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS1_TX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS1_TX, DMA_BISS1_TX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS1_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS1_TX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS1_TX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS1_TX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS1_TX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS1_TX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS1_TX, LL_DMA_MDATAALIGN_BYTE);
 	
 	/* Init setup DMA/SPI */
 	LL_SPI_Disable(BISS1_SPI);
@@ -881,20 +881,20 @@ static void BISS1_SPI_Init(void)
 static void _BISS2_SPI_Init(void)
 {	
 	
-  /* Peripheral clock enable */
+	/* Peripheral clock enable */
 	
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS2_SPI_GRP_EN();
 	
-  /**SPI2 GPIO Configuration
-  MA2_PIN   ------> SPI_SCK
-  SLO2_PIN   ------> SPI_MISO
-  */	
+	/**SPI2 GPIO Configuration
+	MA2_PIN   ------> SPI_SCK
+	SLO2_PIN   ------> SPI_MISO
+	*/	
 	
 	LL_GPIO_SetOutputPin(PWR2_EN_PIN);
 	LL_GPIO_SetPinMode(PWR2_EN_PIN, LL_GPIO_MODE_OUTPUT);
@@ -912,29 +912,29 @@ static void _BISS2_SPI_Init(void)
 	
 	BISS2_GPIO_SET_AF();
 
-  /* SPI2 DMA Init */
+	/* SPI2 DMA Init */
 
-  /* SPI2_RX Init */
+	/* SPI2_RX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_RX);
-  LL_DMA_SetPeriphRequest(DMA_BISS2_RX, DMA_BISS2_RX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_RX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_RX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_RX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_RX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_RX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_RX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS2_RX, DMA_BISS2_RX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_RX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_RX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_RX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_RX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_RX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_RX, LL_DMA_MDATAALIGN_BYTE);
 
-  /* SPI2_TX Init */
+	/* SPI2_TX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_TX);
-  LL_DMA_SetPeriphRequest(DMA_BISS2_TX, DMA_BISS2_TX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_TX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_TX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_TX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_TX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_TX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_TX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS2_TX, DMA_BISS2_TX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_TX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_TX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_TX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_TX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_TX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_TX, LL_DMA_MDATAALIGN_BYTE);
 	
 	/* Init setup DMA/SPI */	
 	LL_DMA_SetPeriphAddress(DMA_BISS2_RX, (uint32_t) &BISS2_SPI->DR);
@@ -953,24 +953,24 @@ static void BISS2_SPI_Init(void)
 	
 	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 	
-  /* Peripheral clock enable */
+	/* Peripheral clock enable */
 	
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI3);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);	
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	BISS2_SPI_GRP_EN();
 	
 	/* Enable PWR2 - PB7 PIN */
 	EncoderSecondPowerEnable();
 	
-  /**SPI2 GPIO Configuration
-  MA2_PIN   ------> SPI_SCK 	------>	PB3
-  SLO2_PIN  ------> SPI_MISO 	------>	PB4
+	/**SPI2 GPIO Configuration
+	MA2_PIN   ------> SPI_SCK 	------>	PB3
+	SLO2_PIN  ------> SPI_MISO 	------>	PB4
 	DE2_PIN		------>	SPI_DE2  	------>	PA1
-  */
+	*/
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
 	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
@@ -981,46 +981,46 @@ static void BISS2_SPI_Init(void)
 	LL_GPIO_SetOutputPin(DE2_PIN);
 	
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
+	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	/* Enable MA2 - PB3 PIN */
 	LL_GPIO_SetOutputPin(MA2_PIN);
 
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
+	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /* SPI2 DMA Init */
+	/* SPI2 DMA Init */
 
-  /* SPI2_RX Init */
+	/* SPI2_RX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_RX);
-  LL_DMA_SetPeriphRequest(DMA_BISS2_RX, DMA_BISS2_RX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_RX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_RX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_RX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_RX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_RX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_RX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS2_RX, DMA_BISS2_RX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);	
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_RX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_RX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_RX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_RX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_RX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_RX, LL_DMA_MDATAALIGN_BYTE);
 
-  /* SPI2_TX Init */
+	/* SPI2_TX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_TX);
-  LL_DMA_SetPeriphRequest(DMA_BISS2_TX, DMA_BISS2_TX_Req);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_TX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_TX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_TX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_TX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_TX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_TX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphRequest(DMA_BISS2_TX, DMA_BISS2_TX_Req);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_TX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_TX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_TX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_TX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_TX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_TX, LL_DMA_MDATAALIGN_BYTE);
 	
 	/* Init setup DMA/SPI */
 	LL_SPI_Disable(BISS2_SPI);
@@ -1045,110 +1045,110 @@ static void USART2_UART_Init(void)
 
 	/* USER CODE BEGIN USART2_Init 0 */
 
-  /* USER CODE END USART2_Init 0 */
+	/* USER CODE END USART2_Init 0 */
 
-  LL_USART_InitTypeDef USART_InitStruct = {0};
+	LL_USART_InitTypeDef USART_InitStruct = {0};
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  LL_RCC_SetUSARTClockSource(LL_RCC_USART2_CLKSOURCE_PCLK1);
+	LL_RCC_SetUSARTClockSource(LL_RCC_USART2_CLKSOURCE_PCLK1);
 
-  /* Peripheral clock enable */
+	/* Peripheral clock enable */
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-  /**USART2 GPIO Configuration
-  PA1   ------> USART2_DE
-  PA15  ------> USART2_RX
-  PB3   ------> USART2_TX
-  */
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE; // LL_GPIO_MODE_OUTPUT
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+	/**USART2 GPIO Configuration
+	PA1   ------> USART2_DE
+	PA15  ------> USART2_RX
+	PB3   ------> USART2_TX
+	*/
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE; // LL_GPIO_MODE_OUTPUT
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_15;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_15;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /* USART2 DMA Init */
+	/* USART2 DMA Init */
 
-  /* USART2_RX Init */
+	/* USART2_RX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
-  LL_DMA_SetPeriphRequest(DMA_BISS2_UART_RX, LL_DMAMUX_REQ_USART2_RX);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_RX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_UART_RX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_RX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_RX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_UART_RX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_UART_RX, LL_DMA_MDATAALIGN_BYTE);
-	
+	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_RX, LL_DMAMUX_REQ_USART2_RX);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_RX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_UART_RX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_RX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_RX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_UART_RX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_UART_RX, LL_DMA_MDATAALIGN_BYTE);
+
 	/* USART2_TX Init */
 	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
 	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_TX, LL_DMAMUX_REQ_USART2_TX);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_TX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_UART_TX, LL_DMA_MODE_NORMAL);
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_TX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_TX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_UART_TX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_UART_TX, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_TX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_UART_TX, LL_DMA_MODE_NORMAL);
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_TX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_TX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_UART_TX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_UART_TX, LL_DMA_MDATAALIGN_BYTE);
 
-  /* USER CODE BEGIN USART2_Init 1 */
+	/* USER CODE BEGIN USART2_Init 1 */
 
-  /* USER CODE END USART2_Init 1 */
-  USART_InitStruct.PrescalerValue = LL_USART_PRESCALER_DIV1;
-  USART_InitStruct.BaudRate = 3000000;
-  USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
-  USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
-  USART_InitStruct.Parity = LL_USART_PARITY_NONE;
-  USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
-  USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-  USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
-  LL_USART_Init(USART2, &USART_InitStruct);
-  LL_USART_SetTXFIFOThreshold(USART2, LL_USART_FIFOTHRESHOLD_1_8);
-  LL_USART_SetRXFIFOThreshold(USART2, LL_USART_FIFOTHRESHOLD_1_8);
-  LL_USART_EnableDEMode(USART2);
-  LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
-  LL_USART_SetDEAssertionTime(USART2, 0);
-  LL_USART_SetDEDeassertionTime(USART2, 0);
-  LL_USART_DisableFIFO(USART2);
-  LL_USART_ConfigAsyncMode(USART2);
+	/* USER CODE END USART2_Init 1 */
+	USART_InitStruct.PrescalerValue = LL_USART_PRESCALER_DIV1;
+	USART_InitStruct.BaudRate = 3000000;
+	USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+	USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+	USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+	USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+	USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+	USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+	LL_USART_Init(USART2, &USART_InitStruct);
+	LL_USART_SetTXFIFOThreshold(USART2, LL_USART_FIFOTHRESHOLD_1_8);
+	LL_USART_SetRXFIFOThreshold(USART2, LL_USART_FIFOTHRESHOLD_1_8);
+	LL_USART_EnableDEMode(USART2);
+	LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
+	LL_USART_SetDEAssertionTime(USART2, 0);
+	LL_USART_SetDEDeassertionTime(USART2, 0);
+	LL_USART_DisableFIFO(USART2);
+	LL_USART_ConfigAsyncMode(USART2);
 
-  /* USER CODE BEGIN WKUPType USART2 */
+	/* USER CODE BEGIN WKUPType USART2 */
 
-  /* USER CODE END WKUPType USART2 */
+	/* USER CODE END WKUPType USART2 */
 
-  LL_USART_Enable(USART2);
+	LL_USART_Enable(USART2);
 	LL_DMA_EnableChannel(DMA_BISS2_UART_RX);
 	LL_DMA_EnableChannel(DMA_BISS2_UART_TX);
-	
-  /* Polling USART2 initialisation */
-  while((!(LL_USART_IsActiveFlag_TEACK(USART2))) || (!(LL_USART_IsActiveFlag_REACK(USART2))))
-  {
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
 
-  /* USER CODE END USART2_Init 2 */
+	/* Polling USART2 initialisation */
+	while((!(LL_USART_IsActiveFlag_TEACK(USART2))) || (!(LL_USART_IsActiveFlag_REACK(USART2))))
+	{
+	}
+	/* USER CODE BEGIN USART2_Init 2 */
+
+	/* USER CODE END USART2_Init 2 */
 
 }
 
@@ -1185,28 +1185,28 @@ static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
 {	
 	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 	LL_USART_InitTypeDef USART_InitStruct = {0};
-	
+
 	// Enable the clocks for the required GPIO ports
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
-	
+
 	/**USART2 GPIO Configuration
-  PA1   ------> USART2_DE
+	PA1   ------> USART2_DE
 	PB4  	------> USART2_RX
-  PB3   ------> USART2_TX
+	PB3   ------> USART2_TX
 	*/
 	// PA1 -> USART2_DE
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 	// PB4 -> USART2_RX (input)
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -1215,7 +1215,7 @@ static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
 	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
 	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
 	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	
+
 	// PB3 -> USART2_TX (output)
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
 	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
@@ -1224,29 +1224,29 @@ static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
 	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
 	GPIO_InitStruct.Alternate = LL_GPIO_AF_7;
 	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	
+
 	/* USART2 RX Init DMA (DMA_BISS2_UART_RX -> DMA1, LL_DMA_CHANNEL_5)*/
 	LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_RX, LL_DMAMUX_REQ_USART2_RX);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_RX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_UART_RX, LL_DMA_MODE_NORMAL); // LL_DMA_MODE_NORMAL LL_DMA_MODE_CIRCULAR
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_RX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_RX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_UART_RX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_UART_RX, LL_DMA_MDATAALIGN_BYTE);
-	
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_RX, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_RX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_UART_RX, LL_DMA_MODE_NORMAL); // LL_DMA_MODE_NORMAL LL_DMA_MODE_CIRCULAR
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_RX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_RX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_UART_RX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_UART_RX, LL_DMA_MDATAALIGN_BYTE);
+
 	/* USART2 TX Init DMA (DMA_BISS2_UART_TX -> DMA1, LL_DMA_CHANNEL_6)*/
 	LL_DMA_DisableChannel(DMA_BISS2_UART_TX);
 	LL_DMA_SetPeriphRequest(DMA_BISS2_UART_TX, LL_DMAMUX_REQ_USART2_TX);
-  LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-  LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_TX, LL_DMA_PRIORITY_LOW);
-  LL_DMA_SetMode(DMA_BISS2_UART_TX, LL_DMA_MODE_NORMAL); // LL_DMA_MODE_NORMAL LL_DMA_MODE_CIRCULAR
-  LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_TX, LL_DMA_PERIPH_NOINCREMENT);
-  LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_TX, LL_DMA_MEMORY_INCREMENT);
-  LL_DMA_SetPeriphSize(DMA_BISS2_UART_TX, LL_DMA_PDATAALIGN_BYTE);
-  LL_DMA_SetMemorySize(DMA_BISS2_UART_TX, LL_DMA_MDATAALIGN_BYTE);
-	
+	LL_DMA_SetDataTransferDirection(DMA_BISS2_UART_TX, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetChannelPriorityLevel(DMA_BISS2_UART_TX, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA_BISS2_UART_TX, LL_DMA_MODE_NORMAL); // LL_DMA_MODE_NORMAL LL_DMA_MODE_CIRCULAR
+	LL_DMA_SetPeriphIncMode(DMA_BISS2_UART_TX, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA_BISS2_UART_TX, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA_BISS2_UART_TX, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA_BISS2_UART_TX, LL_DMA_MDATAALIGN_BYTE);
+
 	/* USART2 Configuration */
 	USART_InitStruct.PrescalerValue = LL_USART_PRESCALER_DIV1;
 	USART_InitStruct.BaudRate = 460800;      // Baud rate
@@ -1256,15 +1256,15 @@ static void USART2_Init_IRS(void) // TODO: USART2_UART_Init_IRS
 	USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
 	USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
 	USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
-	
+
 	// Init USART2
 	LL_USART_Init(USART2, &USART_InitStruct);
-  LL_USART_EnableDEMode(USART2);
-  LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
+	LL_USART_EnableDEMode(USART2);
+	LL_USART_SetDESignalPolarity(USART2, LL_USART_DE_POLARITY_HIGH);
 	LL_USART_SetDEAssertionTime(BISS2_UART, 16U);
 	LL_USART_SetDEDeassertionTime(BISS2_UART, 16U);
-  LL_USART_ConfigAsyncMode(USART2);
-	
+	LL_USART_ConfigAsyncMode(USART2);
+
 	// Enable USART2
 	LL_USART_Enable(USART2);
 	while (!LL_USART_IsActiveFlag_TEACK(USART2) || !LL_USART_IsActiveFlag_REACK(USART2)){
@@ -1296,66 +1296,66 @@ static void USART2_Config_IRS(void)
 static void MX_TIM3_ENC_Init(void)
 {
 
-  /* USER CODE BEGIN TIM3_Init 0 */
-	
+	/* USER CODE BEGIN TIM3_Init 0 */
+
 	LL_TIM_SetRemap(TIM3, LL_TIM_TIM3_TI1_RMP_COMP1);
-	
-  /* USER CODE END TIM3_Init 0 */
-	
-  LL_TIM_InitTypeDef TIM_InitStruct = {0};
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+	/* USER CODE END TIM3_Init 0 */
 
-  /* Peripheral clock enable */
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM3);
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-	
-  /**TIM3 GPIO Configuration
-  PA4   ------> TIM3_CH2
-  */
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_2;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
-  /* USER CODE BEGIN TIM3_Init 1 */
+	LL_TIM_InitTypeDef TIM_InitStruct = {0};
+
+	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	/* Peripheral clock enable */
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM3);
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+
 	/**TIM3 GPIO Configuration
-  PA6   ------> TIM3_CH1
-  */	
-	GPIO_InitStruct.Pin = LL_GPIO_PIN_6;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_2;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  /* USER CODE END TIM3_Init 1 */
-	
-  TIM_InitStruct.Prescaler = 0;
-  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 65535;
-  TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-  LL_TIM_Init(TIM3, &TIM_InitStruct);
-  LL_TIM_DisableARRPreload(TIM3);
-  LL_TIM_SetEncoderMode(TIM3, LL_TIM_ENCODERMODE_X2_TI1);
-  LL_TIM_IC_SetActiveInput(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
-  LL_TIM_IC_SetPrescaler(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_ICPSC_DIV1);
-  LL_TIM_IC_SetFilter(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV1);
-  LL_TIM_IC_SetPolarity(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_IC_POLARITY_RISING);
-  LL_TIM_IC_SetActiveInput(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_ACTIVEINPUT_DIRECTTI);
-  LL_TIM_IC_SetPrescaler(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_ICPSC_DIV1);
-  LL_TIM_IC_SetFilter(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_IC_FILTER_FDIV1);
-  LL_TIM_IC_SetPolarity(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING);
-  LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
-  LL_TIM_DisableMasterSlaveMode(TIM3);
-  //LL_TIM_SetRemap(TIM3, LL_TIM_TIM3_TI1_RMP_COMP1);
-	
-  /* USER CODE BEGIN TIM3_Init 2 */
+	PA4   ------> TIM3_CH2
+	*/
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_2;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /* USER CODE END TIM3_Init 2 */
+	/* USER CODE BEGIN TIM3_Init 1 */
+	/**TIM3 GPIO Configuration
+	PA6   ------> TIM3_CH1
+	*/	
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_6;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	GPIO_InitStruct.Alternate = LL_GPIO_AF_2;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	/* USER CODE END TIM3_Init 1 */
+
+	TIM_InitStruct.Prescaler = 0;
+	TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+	TIM_InitStruct.Autoreload = 65535;
+	TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
+	LL_TIM_Init(TIM3, &TIM_InitStruct);
+	LL_TIM_DisableARRPreload(TIM3);
+	LL_TIM_SetEncoderMode(TIM3, LL_TIM_ENCODERMODE_X2_TI1);
+	LL_TIM_IC_SetActiveInput(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_ACTIVEINPUT_DIRECTTI);
+	LL_TIM_IC_SetPrescaler(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_ICPSC_DIV1);
+	LL_TIM_IC_SetFilter(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_IC_FILTER_FDIV1);
+	LL_TIM_IC_SetPolarity(TIM3, LL_TIM_CHANNEL_CH1, LL_TIM_IC_POLARITY_RISING);
+	LL_TIM_IC_SetActiveInput(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_ACTIVEINPUT_DIRECTTI);
+	LL_TIM_IC_SetPrescaler(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_ICPSC_DIV1);
+	LL_TIM_IC_SetFilter(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_IC_FILTER_FDIV1);
+	LL_TIM_IC_SetPolarity(TIM3, LL_TIM_CHANNEL_CH2, LL_TIM_IC_POLARITY_RISING);
+	LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_RESET);
+	LL_TIM_DisableMasterSlaveMode(TIM3);
+	//LL_TIM_SetRemap(TIM3, LL_TIM_TIM3_TI1_RMP_COMP1);
+
+	/* USER CODE BEGIN TIM3_Init 2 */
+
+	/* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -1367,105 +1367,105 @@ static void MX_TIM3_ENC_Init(void)
 static void MX_ADC1_Init(void)
 {
 
-  /* USER CODE BEGIN ADC1_Init 0 */
+	/* USER CODE BEGIN ADC1_Init 0 */
 
-  /* USER CODE END ADC1_Init 0 */
+	/* USER CODE END ADC1_Init 0 */
 
-  LL_ADC_InitTypeDef ADC_InitStruct = {0};
-  LL_ADC_REG_InitTypeDef ADC_REG_InitStruct = {0};
-  LL_ADC_CommonInitTypeDef ADC_CommonInitStruct = {0};
+	LL_ADC_InitTypeDef ADC_InitStruct = {0};
+	LL_ADC_REG_InitTypeDef ADC_REG_InitStruct = {0};
+	LL_ADC_CommonInitTypeDef ADC_CommonInitStruct = {0};
 
-  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+	LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  LL_RCC_SetADCClockSource(LL_RCC_ADC12_CLKSOURCE_SYSCLK);
+	LL_RCC_SetADCClockSource(LL_RCC_ADC12_CLKSOURCE_SYSCLK);
 
-  /* Peripheral clock enable */
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC12);
+	/* Peripheral clock enable */
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC12);
 
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-  /**ADC1 GPIO Configuration
-  PA0   ------> ADC1_IN1
+	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+	/**ADC1 GPIO Configuration
+	PA0   ------> ADC1_IN1
 	PB0   ------> ADC1_IN15
-  */
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_0;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
+	*/
 	GPIO_InitStruct.Pin = LL_GPIO_PIN_0;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-  /* USER CODE BEGIN ADC1_Init 1 */
-	
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_0;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+	GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+	LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	/* USER CODE BEGIN ADC1_Init 1 */
+
 	/* ADC1_DMA1 Init */
-  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_6, LL_DMAMUX_REQ_ADC1);
+	LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_6, LL_DMAMUX_REQ_ADC1);
 
-  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_6, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_6, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 
-  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PRIORITY_LOW);
 
-  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MODE_CIRCULAR);
+	LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MODE_CIRCULAR);
 
-  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PERIPH_NOINCREMENT);
 
-  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MEMORY_INCREMENT);
 
-  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PDATAALIGN_HALFWORD);
+	LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_PDATAALIGN_HALFWORD);
 
-  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MDATAALIGN_HALFWORD);
-	
-  /* USER CODE END ADC1_Init 1 */
+	LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_6, LL_DMA_MDATAALIGN_HALFWORD);
 
-  /** Common config
-  */
-  ADC_InitStruct.Resolution = LL_ADC_RESOLUTION_12B;
-  ADC_InitStruct.DataAlignment = LL_ADC_DATA_ALIGN_RIGHT;
-  ADC_InitStruct.LowPowerMode = LL_ADC_LP_MODE_NONE;
-  LL_ADC_Init(ADC1, &ADC_InitStruct);
-	
-  ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
-  ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_DISABLE;
-  ADC_REG_InitStruct.SequencerDiscont = LL_ADC_REG_SEQ_DISCONT_DISABLE;
-  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS; // LL_ADC_REG_CONV_SINGLE 
-  ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_NONE;
-  ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_OVERWRITTEN; // LL_ADC_REG_OVR_DATA_PRESERVED
-  LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
-	
-  LL_ADC_SetGainCompensation(ADC1, 0);
-  LL_ADC_SetOverSamplingScope(ADC1, LL_ADC_OVS_GRP_REGULAR_CONTINUED);
-  LL_ADC_ConfigOverSamplingRatioShift(ADC1, LL_ADC_OVS_RATIO_256, LL_ADC_OVS_SHIFT_RIGHT_4);
+	/* USER CODE END ADC1_Init 1 */
+
+	/** Common config
+	*/
+	ADC_InitStruct.Resolution = LL_ADC_RESOLUTION_12B;
+	ADC_InitStruct.DataAlignment = LL_ADC_DATA_ALIGN_RIGHT;
+	ADC_InitStruct.LowPowerMode = LL_ADC_LP_MODE_NONE;
+	LL_ADC_Init(ADC1, &ADC_InitStruct);
+
+	ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
+	ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_DISABLE;
+	ADC_REG_InitStruct.SequencerDiscont = LL_ADC_REG_SEQ_DISCONT_DISABLE;
+	ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS; // LL_ADC_REG_CONV_SINGLE 
+	ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_NONE;
+	ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_OVERWRITTEN; // LL_ADC_REG_OVR_DATA_PRESERVED
+	LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
+
+	LL_ADC_SetGainCompensation(ADC1, 0);
+	LL_ADC_SetOverSamplingScope(ADC1, LL_ADC_OVS_GRP_REGULAR_CONTINUED);
+	LL_ADC_ConfigOverSamplingRatioShift(ADC1, LL_ADC_OVS_RATIO_256, LL_ADC_OVS_SHIFT_RIGHT_4);
 	LL_ADC_SetOverSamplingDiscont(ADC1, LL_ADC_OVS_SHIFT_RIGHT_4);
 
-  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_SYNC_PCLK_DIV4;
-  ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
-  LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
+	ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_SYNC_PCLK_DIV4;
+	ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
+	LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
 
-  /* Disable ADC deep power down (enabled by default after reset state) */
-  LL_ADC_DisableDeepPowerDown(ADC1);
-  /* Enable ADC internal voltage regulator */
-  LL_ADC_EnableInternalRegulator(ADC1);
-  /* Delay for ADC internal voltage regulator stabilization. */
-  /* Compute number of CPU cycles to wait for, from delay in us. */
-  /* Note: Variable divided by 2 to compensate partially */
-  /* CPU processing cycles (depends on compilation optimization). */
-  /* Note: If system core clock frequency is below 200kHz, wait time */
-  /* is only a few CPU processing cycles. */
-  volatile uint32_t wait_loop_index;
-  wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
-  while(wait_loop_index != 0)
-  {
-    wait_loop_index--;
-  }
+	/* Disable ADC deep power down (enabled by default after reset state) */
+	LL_ADC_DisableDeepPowerDown(ADC1);
+	/* Enable ADC internal voltage regulator */
+	LL_ADC_EnableInternalRegulator(ADC1);
+	/* Delay for ADC internal voltage regulator stabilization. */
+	/* Compute number of CPU cycles to wait for, from delay in us. */
+	/* Note: Variable divided by 2 to compensate partially */
+	/* CPU processing cycles (depends on compilation optimization). */
+	/* Note: If system core clock frequency is below 200kHz, wait time */
+	/* is only a few CPU processing cycles. */
+	volatile uint32_t wait_loop_index;
+	wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
+	while(wait_loop_index != 0)
+	{
+	wait_loop_index--;
+	}
 
-  /** Configure Regular Channel
-  */
+	/** Configure Regular Channel
+	*/
 	// LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_CONTINUOUS);
-  LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_15);
-  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_15, LL_ADC_SAMPLINGTIME_2CYCLES_5);
-  LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_15, LL_ADC_SINGLE_ENDED);
-  /* USER CODE BEGIN ADC1_Init 2 */
-	
+	LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_15);
+	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_15, LL_ADC_SAMPLINGTIME_2CYCLES_5);
+	LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_15, LL_ADC_SINGLE_ENDED);
+	/* USER CODE BEGIN ADC1_Init 2 */
+
 	/* GPIO Init PA8 PIN
 	PA8   ------> En1 
 	*/
@@ -1481,7 +1481,7 @@ static void MX_ADC1_Init(void)
 	/* Enable PWR1 - PA8 PIN */
 //	EncoderPowerEnable();
 
-  /* USER CODE END ADC1_Init 2 */
+	/* USER CODE END ADC1_Init 2 */
 }
 
 static void Config_ADC1(void)
@@ -1490,24 +1490,24 @@ static void Config_ADC1(void)
 	LL_DMA_SetMemoryAddress(DMA_ADC1, (uint32_t)&adc1_buffer);
 	LL_DMA_SetPeriphAddress(DMA_ADC1, (uint32_t)&ADC1->DR);
 	LL_DMA_SetDataLength(DMA_ADC1, ADC_BUF_SIZE);
-	
+
 	/* Enable DMA channel */
 	LL_DMA_EnableChannel(DMA_ADC1);
-	
+
 	/* Enable DMA for ADC1 unlimited transfer */
 	LL_ADC_REG_SetDMATransfer(ADC1, LL_ADC_REG_DMA_TRANSFER_UNLIMITED);
-	
+
 	/* Start calibration for ADC1 */
 	LL_ADC_StartCalibration(ADC1, LL_ADC_SINGLE_ENDED);
-  while(LL_ADC_IsCalibrationOnGoing(ADC1));
+	while(LL_ADC_IsCalibrationOnGoing(ADC1));
 	/* Wait 4 ADC clock cycles */ 
 	volatile uint32_t wait_loop_index = 4;
 	while(wait_loop_index != 0) {
-    wait_loop_index--;
-  }
-	
+		wait_loop_index--;
+	}
+
 	/* Enable ADC1 and start conversion */
-  LL_ADC_Enable(ADC1);
+	LL_ADC_Enable(ADC1);
 	while(!LL_ADC_IsActiveFlag_ADRDY(ADC1));
 	LL_ADC_REG_StartConversion(ADC1);
 }
