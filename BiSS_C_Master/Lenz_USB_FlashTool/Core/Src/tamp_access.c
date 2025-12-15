@@ -15,7 +15,7 @@
 void SetTampFlag(uint32_t flag)
 {
     LL_PWR_EnableBkUpAccess();
-	  uint32_t regValue = LL_RTC_BKP_GetRegister(RTC, TAMP_FLAGS_REGISTER);
+	uint32_t regValue = LL_RTC_BKP_GetRegister(RTC, TAMP_FLAGS_REGISTER);
     regValue |= flag;
     LL_RTC_BKP_SetRegister(RTC, TAMP_FLAGS_REGISTER, regValue);
     LL_PWR_DisableBkUpAccess();
