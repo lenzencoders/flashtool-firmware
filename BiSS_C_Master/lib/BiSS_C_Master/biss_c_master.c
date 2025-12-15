@@ -8,9 +8,9 @@
 
 #include "biss_c_master.h"
 
-#define BISS_ADRESS_Mask					0x7FU	/* BiSS C register address mask (7 bits) */
-#define BISS_CD_CRC4_Pos					2U 		/* Control Data CRC4 position */
-#define BISS_CD_Pos								6U		/* Control Data position */
+#define BISS_ADRESS_Mask				0x7FU	/* BiSS C register address mask (7 bits) */
+#define BISS_CD_CRC4_Pos				2U 		/* Control Data CRC4 position */
+#define BISS_CD_Pos						6U		/* Control Data position */
 #define BISS_W_CDF_DATA_Pos				5U		/* Data from Write Control Data Frame  position */
 #define BISS_W_CDF_CRC4_Pos				1U		/* CRC4 from Write Control Data Frame  position */
 #define BISS_R_CDF_DATA_Pos				4U		/* Data from Read Control Data Frame  position */
@@ -18,11 +18,11 @@
 #define BISS_R_CDF_CRC4_Mask			0xFU		/* Data from Read Control Data Frame  position */
 #define BISS_CDM_CTS_Pos     			10U   /* Control bit CTS position */
 #define BISS_CDM_S_Pos       			11U   /* Start bit position */
-#define BISS_DATA_CRC_LEN					13U	 	/* Data(8) CRC(4) P(1) */
+#define BISS_DATA_CRC_LEN				13U	 	/* Data(8) CRC(4) P(1) */
 #define BISS_ABORT_CYCLES 				14U		/* Cycles to abort control data frame */
 #define BISS_IDL_ADR_RW_LEN 			18U
-#define	MSB_BISS_IDL_ADR_RW_LEN 	(BISS_IDL_ADR_RW_LEN - 2U)
-#define IDL_0											0x20000U
+#define	MSB_BISS_IDL_ADR_RW_LEN 		(BISS_IDL_ADR_RW_LEN - 2U)
+#define IDL_0							0x20000U
 
 
 static const uint8_t  tableCRC4[16] = {0x0,0x3,0x6,0x5,0xC,0xF,0xA,0x9,0xB,0x8,0xD,0xE,0x7,0x4,0x1,0x2};
@@ -102,8 +102,8 @@ static inline uint32_t Gen_CDF_Start_Write(uint16_t Address) {
 }
 
 static inline uint32_t Gen_CDF_Data_Write(uint8_t Data) {
-		uint8_t CRC4 = CRC4_DATA(Data);		
-		return ((Data << BISS_W_CDF_DATA_Pos) | (CRC4 << BISS_W_CDF_CRC4_Pos)); // 13-bit
+	uint8_t CRC4 = CRC4_DATA(Data);		
+	return ((Data << BISS_W_CDF_DATA_Pos) | (CRC4 << BISS_W_CDF_CRC4_Pos)); // 13-bit
 }
 
 BiSSExternalState_t BiSSRequestRead(uint16_t addr, uint8_t len, uint8_t *ptr){
