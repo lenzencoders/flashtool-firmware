@@ -19,29 +19,29 @@
 
 
 //#define UART_LINE_SIZE		133U
-#define HEXLEN_ADR_CMD_CRC_LEN								5U // Length of data (1) + Address (2) + Cmd (1) + CRC (1) bytes
-#define HEX_DATA_LEN													128U
-#define UART_LINE_SIZE												HEXLEN_ADR_CMD_CRC_LEN + HEX_DATA_LEN
-#define QUEUE_SIZE 														36U //FIFO
-#define MAX_RETRY															3U
-#define UART_ANGLE_LEN 												60U // 60U --> Encoder
-#define UART_ANGLE_BUF_SIZE 									(UART_ANGLE_LEN * 4U) // *4U --> Encoder
-#define UART_ANGLE_TWO_ENC_LEN 								30U // 30U --> Encoder1 + Encoder2
-#define UART_ANGLE_TWO_ENC_BUF_SIZE 					(UART_ANGLE_TWO_ENC_LEN * 8U) // *(4U + 4U) --> Encoder1 + Encoder2
-#define UART_ANGLE_TWO_ENC_AB_UART_LEN 				40U // 40U --> Encoder1 + Renishaw
+#define HEXLEN_ADR_CMD_CRC_LEN					5U // Length of data (1) + Address (2) + Cmd (1) + CRC (1) bytes
+#define HEX_DATA_LEN							128U
+#define UART_LINE_SIZE							HEXLEN_ADR_CMD_CRC_LEN + HEX_DATA_LEN
+#define QUEUE_SIZE 								36U //FIFO
+#define MAX_RETRY								3U
+#define UART_ANGLE_LEN 							60U // 60U --> Encoder
+#define UART_ANGLE_BUF_SIZE 					(UART_ANGLE_LEN * 4U) // *4U --> Encoder
+#define UART_ANGLE_TWO_ENC_LEN 					30U // 30U --> Encoder1 + Encoder2
+#define UART_ANGLE_TWO_ENC_BUF_SIZE 			(UART_ANGLE_TWO_ENC_LEN * 8U) // *(4U + 4U) --> Encoder1 + Encoder2
+#define UART_ANGLE_TWO_ENC_AB_UART_LEN 			40U // 40U --> Encoder1 + Renishaw
 #define UART_ANGLE_TWO_ENC_AB_UART_BUF_SIZE 	(UART_ANGLE_TWO_ENC_AB_UART_LEN * 6U) // *(4U + 2U) --> Encoder1 + Renishaw
-#define ANGLE_DATA_SIZE												4U
-#define RENISHAW_ANGLE_DATA_SIZE							2U
-#define WRITE_BANK_DATA_LEN 									64U
-#define PAGE_ADDR       											0x18U
-#define BSEL_ADDR		    											0x40U
-#define FIRST_USER_BANK 											0x05U
-#define BISS_ABORT_CNT_CYCLES 								14U		/* Cycles to abort control data frame */
+#define ANGLE_DATA_SIZE							4U
+#define RENISHAW_ANGLE_DATA_SIZE				2U
+#define WRITE_BANK_DATA_LEN 					64U
+#define PAGE_ADDR       						0x18U
+#define BSEL_ADDR		    					0x40U
+#define FIRST_USER_BANK 						0x05U
+#define BISS_ABORT_CNT_CYCLES 					14U		/* Cycles to abort control data frame */
 
 typedef enum{
     ERROR_TYPE_BISS = 0xDEU,
     ERROR_TYPE_UART = 0xEFU,
-		ERROR_TYPE_NONE = 0xFFU,
+	ERROR_TYPE_NONE = 0xFFU,
 }UART_Error_Type_t;
 
 typedef enum{
@@ -164,16 +164,12 @@ static void handle_abort_state(void);
 void TAMP_Init(void) {
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
-
 	LL_RCC_EnableRTC();
-	LL_PWR_EnableBkUpAccess();
-	
+	LL_PWR_EnableBkUpAccess();	
 	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
 	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_4SAMPLE);
-  SET_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
-	
+	SET_BIT(TAMP->IER, TAMP_IER_TAMP1IE);	
 	LL_RTC_TAMPER_Enable(RTC, LL_RTC_TAMPER_1);
-	
 	NVIC_SetPriority(RTC_TAMP_LSECSS_IRQn, 1);
 	NVIC_EnableIRQ(RTC_TAMP_LSECSS_IRQn);
 }
@@ -182,15 +178,10 @@ void TAMP_DeInit(void)
 {
 	CLEAR_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
 	NVIC_DisableIRQ(RTC_TAMP_LSECSS_IRQn);
-	
 	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
-	
 	WRITE_REG(TAMP->SCR, TAMP_SCR_CTAMP1F);
- 
 	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_DISABLE);
-	
 	LL_PWR_DisableBkUpAccess();
-	
 	LL_RCC_DisableRTC();
 	LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
 }
@@ -201,10 +192,10 @@ void Stay_in_FW_Config(void) {
 }
 
 void JumpToBootloader(void) {
-		ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
-		SetTampFlag(TAMP_FLAGS_STAY_BL);
+	ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+	SetTampFlag(TAMP_FLAGS_STAY_BL);
 //		ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
-		TAMP_DeInit();
+	TAMP_DeInit();
     NVIC_SystemReset();
 }
 
@@ -318,32 +309,32 @@ static void handle_change_mode_command(uint8_t mode) {
 	switch (mode) {
 		case 0:
 			if (Current_Mode != BISS_MODE_SPI_SPI){
-					Change_Current_Mode(BISS_MODE_SPI_SPI);
+				Change_Current_Mode(BISS_MODE_SPI_SPI);
 			}
 			break;
 		case 1:
 			if (Current_Mode != BISS_MODE_AB_UART){
-					Change_Current_Mode(BISS_MODE_AB_UART);
+				Change_Current_Mode(BISS_MODE_AB_UART);
 			}
 			break;
 		case 2:
 			if (Current_Mode != BISS_MODE_SPI_UART_IRS){
-					Change_Current_Mode(BISS_MODE_SPI_UART_IRS);
+				Change_Current_Mode(BISS_MODE_SPI_UART_IRS);
 			}
 			break;
 		case 3:
 			if (Current_Mode != BISS_MODE_AB_SPI){
-					Change_Current_Mode(BISS_MODE_AB_SPI);
+				Change_Current_Mode(BISS_MODE_AB_SPI);
 			}
 			break;
 		case 4:
 			if (Current_Mode != BISS_MODE_DEFAULT_SPI){
-					Change_Current_Mode(BISS_MODE_DEFAULT_SPI);
+				Change_Current_Mode(BISS_MODE_DEFAULT_SPI);
 			}
 			break;
 		default:
 			if (Current_Mode != BISS_MODE_DEFAULT_SPI){
-					Change_Current_Mode(BISS_MODE_DEFAULT_SPI);
+				Change_Current_Mode(BISS_MODE_DEFAULT_SPI);
 			}
 			break;
 	}
@@ -355,7 +346,6 @@ static void handle_page_command(uint8_t data_to_page) {
 		if (BiSSRequestWrite(PAGE_ADDR, 1U, &cmd_data_page) == BISS_REQ_OK) {
 			complete_command_processing();
 			retry_cnt = 0;
-//											uint8_t add_data = 0x05;
 			if (EnqueueCommandToBegining(UART_COMMAND_WRITE_REG, BSEL_ADDR, 1U, (uint8_t *)FIRST_USER_BANK) != QUEUE_OK){
 				UART_Error = UART_ERROR_QUEUE_FULL;
 				UART_State = UART_STATE_ABORT; 
@@ -428,41 +418,40 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, ui
 		if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK) {
 			complete_command_processing();
 			retry_cnt = 0;
-			} else {
-				retry_cnt++;
-				if (retry_cnt >= MAX_RETRY) {
-					UART_Error = UART_ERROR_BISS_WRITE_FAULT;
-					UART_State = UART_STATE_ABORT;
-					retry_cnt = 0;
+		} else {
+			retry_cnt++;
+			if (retry_cnt >= MAX_RETRY) {
+				UART_Error = UART_ERROR_BISS_WRITE_FAULT;
+				UART_State = UART_STATE_ABORT;
+				retry_cnt = 0;
 //					BiSSResetExternalState();
 //					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 //					queue_cnt--;
-				}
 			}
 		}
-				
-//											if (retry_cnt >= MAX_RETRY) {
-//												if(BiSSGetFaultState() == BISS_NO_FAULTS) {
-//													UART_State = UART_STATE_IDLE;
-//													retry_cnt = 0;
-//												} else {
-//													UART_Error = UART_ERROR_BISS;
-//													UART_State = UART_STATE_ABORT;
-//													queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//													queue_cnt--;
-//													retry_cnt = 0;
-//												}
-//											}
-					
-//									} else {
-//										if(BiSSGetFaultState() != BISS_NO_FAULTS) {
-//											UART_Error = UART_ERROR_BISS;
-//											UART_State = UART_STATE_ABORT;
-//											queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//											queue_cnt--;
-//											retry_cnt = 0;
-//										}
-//									}
+	}
+//	if (retry_cnt >= MAX_RETRY) {
+//			if(BiSSGetFaultState() == BISS_NO_FAULTS) {
+//				UART_State = UART_STATE_IDLE;
+//				retry_cnt = 0;
+//			} else {
+//				UART_Error = UART_ERROR_BISS;
+//				UART_State = UART_STATE_ABORT;
+//				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+//				queue_cnt--;
+//				retry_cnt = 0;
+//			}
+//		}
+
+//	} else {
+//		if(BiSSGetFaultState() != BISS_NO_FAULTS) {
+//			UART_Error = UART_ERROR_BISS;
+//			UART_State = UART_STATE_ABORT;
+//			queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+//			queue_cnt--;
+//			retry_cnt = 0;
+//		}
+//	}
 }
 
 static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UART_Command_t command) {
@@ -657,12 +646,12 @@ static void handle_idle_state(void) {
 	uint8_t bytes_received;
 	new_cnt = RX_BUFFER_SIZE - LL_DMA_GetDataLength(DMA_LPUART_RX);
 	if (dma_rx_cnt != new_cnt) {
-			bytes_received = (new_cnt - dma_rx_cnt + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
-			uart_length = usb_rx_buffer[dma_rx_cnt];
-			uart_expected_length = uart_length + HEXLEN_ADR_CMD_CRC_LEN;
-			if (bytes_received >= uart_expected_length) {
-				UART_State = UART_STATE_RECEIVE;
-			}
+		bytes_received = (new_cnt - dma_rx_cnt + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
+		uart_length = usb_rx_buffer[dma_rx_cnt];
+		uart_expected_length = uart_length + HEXLEN_ADR_CMD_CRC_LEN;
+		if (bytes_received >= uart_expected_length) {
+			UART_State = UART_STATE_RECEIVE;
+		}
 	} else {
 		if (queue_cnt > 0){
 			UART_State = UART_STATE_RUNCMD;
@@ -676,14 +665,13 @@ static void handle_receive_state(uint8_t crc, uint8_t calculated_crc) {
 		uint8_t crc_position = (dma_rx_cnt + uart_expected_length - 1U) % RX_BUFFER_SIZE;
 		crc = usb_rx_buffer[crc_position];
 		calculated_crc = CalculateCRCCircularBuffer((uint8_t *)usb_rx_buffer, RX_BUFFER_SIZE, dma_rx_cnt, uart_expected_length - 1U);
-	
 		if (crc == calculated_crc) {
 			if (dma_rx_cnt + uart_expected_length <= RX_BUFFER_SIZE) {
-					memcpy(hex_line_buffer, (uint8_t *)&usb_rx_buffer[dma_rx_cnt], uart_expected_length);
+				memcpy(hex_line_buffer, (uint8_t *)&usb_rx_buffer[dma_rx_cnt], uart_expected_length);
 			} else {
-					uint32_t part_size = RX_BUFFER_SIZE - dma_rx_cnt;
-					memcpy(hex_line_buffer, (uint8_t *)&usb_rx_buffer[dma_rx_cnt], part_size);
-					memcpy(hex_line_buffer + part_size, (uint8_t *)usb_rx_buffer, uart_expected_length - part_size);
+				uint32_t part_size = RX_BUFFER_SIZE - dma_rx_cnt;
+				memcpy(hex_line_buffer, (uint8_t *)&usb_rx_buffer[dma_rx_cnt], part_size);
+				memcpy(hex_line_buffer + part_size, (uint8_t *)usb_rx_buffer, uart_expected_length - part_size);
 			}
 
 			uint8_t cmd_data_len = hex_line_buffer[0];
@@ -698,8 +686,8 @@ static void handle_receive_state(uint8_t crc, uint8_t calculated_crc) {
 				UART_State = UART_STATE_ABORT;  
 			}
 		} else {
-				UART_Error = UART_ERROR_CRC;
-				UART_State = UART_STATE_CHECKCRC;
+			UART_Error = UART_ERROR_CRC;
+			UART_State = UART_STATE_CHECKCRC;
 		}
 	} else {
 		UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
@@ -877,16 +865,12 @@ static void handle_reading_encoder_ab_spi_state(void) {
 	if(ReadingStrEnc2.len > 0) {
 		AngleDataRenishaw_t angle_data1 = getAngleRenishaw();
 		AngleData_t angle_data2 = getAngle2();
-		
 		if(angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) {
-			
 			ReadingStrRenishaw.AngleFIFO[ReadingStrRenishaw.FIFO_current_ptr] = angle_data1;
 			ReadingStrRenishaw.FIFO_current_ptr++;
-			
 			ReadingStrEnc2.ToL_cnt = angle_data2.time_of_life_counter;
 			ReadingStrEnc2.AngleFIFO[ReadingStrEnc2.FIFO_current_ptr] = angle_data2;
 			ReadingStrEnc2.FIFO_current_ptr++;
-			
 			if((((uint16_t)ReadingStrEnc2.FIFO_current_ptr + 256 - ReadingStrEnc2.FIFO_start_ptr) & 0xFFU) >= UART_ANGLE_TWO_ENC_AB_UART_LEN) {
 				uint8_t TxBufCnt = 0;
 				while(ReadingStrEnc2.FIFO_start_ptr != ReadingStrEnc2.FIFO_current_ptr) {
@@ -915,17 +899,13 @@ static void handle_reading_encoder_spi_spi_state(void) {
 	if(ReadingStrEnc2.len > 0) {
 		AngleData_t angle_data1 = getAngle1();
 		AngleData_t angle_data2 = getAngle2();
-
 		if((angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) || (angle_data1.time_of_life_counter != ReadingStrEnc1.ToL_cnt)) {
-			
 			ReadingStrEnc1.ToL_cnt = angle_data1.time_of_life_counter;
 			ReadingStrEnc1.AngleFIFO[ReadingStrEnc1.FIFO_current_ptr] = angle_data1;
 			ReadingStrEnc1.FIFO_current_ptr++;
-			
 			ReadingStrEnc2.ToL_cnt = angle_data2.time_of_life_counter;
 			ReadingStrEnc2.AngleFIFO[ReadingStrEnc2.FIFO_current_ptr] = angle_data2;
 			ReadingStrEnc2.FIFO_current_ptr++;
-			
 			if((((uint16_t)ReadingStrEnc2.FIFO_current_ptr + 256 - ReadingStrEnc2.FIFO_start_ptr) & 0xFFU) >= UART_ANGLE_TWO_ENC_LEN) {
 				uint8_t TxBufCnt = 0;
 				while(ReadingStrEnc2.FIFO_start_ptr != ReadingStrEnc2.FIFO_current_ptr) {
@@ -954,16 +934,12 @@ static void handle_reading_encoder_ab_uart_state(void) {
 	if(ReadingStrEnc2.len > 0) {
 		AngleData_t angle_data2 = getAngle2();
 		AngleDataRenishaw_t angle_data1 = getAngleRenishaw();
-		
 		if(angle_data2.time_of_life_counter != ReadingStrEnc2.ToL_cnt) {
-
 			ReadingStrEnc2.ToL_cnt = angle_data2.time_of_life_counter;
 			ReadingStrEnc2.AngleFIFO[ReadingStrEnc2.FIFO_current_ptr] = angle_data2;
 			ReadingStrEnc2.FIFO_current_ptr++;
-			
 			ReadingStrRenishaw.AngleFIFO[ReadingStrRenishaw.FIFO_current_ptr] = angle_data1;
 			ReadingStrRenishaw.FIFO_current_ptr++;
-			
 			if((((uint16_t)ReadingStrEnc2.FIFO_current_ptr + 256 - ReadingStrEnc2.FIFO_start_ptr) & 0xFFU) >= UART_ANGLE_TWO_ENC_AB_UART_LEN) {
 				uint8_t TxBufCnt = 0;
 				while(ReadingStrEnc2.FIFO_start_ptr != ReadingStrEnc2.FIFO_current_ptr) {
@@ -1117,7 +1093,7 @@ static void handle_abort_state(void) {
 
 void UART_StateMachine(void) {
     uint8_t crc;
-		uint8_t calculated_crc;
+	uint8_t calculated_crc;
 //    uint32_t new_cnt;
 
 //		if(IsBiSSReqBusy() == BISS_FAULT) {
@@ -1130,51 +1106,51 @@ void UART_StateMachine(void) {
 //			}
 //		}
 	
-		if(IsBiSSReqBusy() ==	BISS_READ_FINISHED) {
-				UART_Transmit(&UART_TX);
-				BiSSResetExternalState();
-		}
+	if(IsBiSSReqBusy() ==	BISS_READ_FINISHED) {
+			UART_Transmit(&UART_TX);
+			BiSSResetExternalState();
+	}
 		
     switch (UART_State) {
         case UART_STATE_IDLE:
-					handle_idle_state();
-					break;
+			handle_idle_state();
+			break;
 
         case UART_STATE_RECEIVE:
-					handle_receive_state(crc, calculated_crc);
-					break;
+			handle_receive_state(crc, calculated_crc);
+			break;
 
         case UART_STATE_CHECKCRC: // TODO ???
-					UART_Error = UART_ERROR_CRC;
-					UART_State = UART_STATE_ABORT;  // TODO  handle CRC error
-					break;
+			UART_Error = UART_ERROR_CRC;
+			UART_State = UART_STATE_ABORT;  // TODO  handle CRC error
+			break;
 
         case UART_STATE_RUNCMD:
-					handle_run_command_state();
-					break;
+			handle_run_command_state();
+			break;
 						
-				case UART_STATE_ANGLE_READING_TWO_ENC_AB_SPI:
-					handle_reading_encoder_ab_spi_state();
-					break;
-						
-				case UART_STATE_ANGLE_READING_TWO_ENC_SPI:
-					handle_reading_encoder_spi_spi_state();
-					break;
+		case UART_STATE_ANGLE_READING_TWO_ENC_AB_SPI:
+			handle_reading_encoder_ab_spi_state();
+			break;
 				
-				case UART_STATE_ANGLE_READING_TWO_ENC_AB_UART:
-					handle_reading_encoder_ab_uart_state();
-					break;
-				
-				case UART_STATE_ANGLE_READING_ENC_SPI:
-					handle_reading_encoder_spi_state();
-					break;
+		case UART_STATE_ANGLE_READING_TWO_ENC_SPI:
+			handle_reading_encoder_spi_spi_state();
+			break;
+		
+		case UART_STATE_ANGLE_READING_TWO_ENC_AB_UART:
+			handle_reading_encoder_ab_uart_state();
+			break;
+		
+		case UART_STATE_ANGLE_READING_ENC_SPI:
+			handle_reading_encoder_spi_state();
+			break;
 					
         case UART_STATE_ABORT:
-					handle_abort_state();
-					break;
+			handle_abort_state();
+			break;
 
         default:
-					UART_State = UART_STATE_IDLE;
-          break;
+			UART_State = UART_STATE_IDLE;
+			break;
     }
 }
