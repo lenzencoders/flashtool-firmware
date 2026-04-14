@@ -696,6 +696,23 @@ static void handle_receive_state(uint8_t crc, uint8_t calculated_crc) {
 	dma_rx_cnt = (dma_rx_cnt + uart_expected_length) % RX_BUFFER_SIZE;
 }
 
+static uint8_t is_spi_ch_selection_allowed(uint8_t mode) {
+    switch(mode) {
+        case BISS_MODE_SPI_SPI:
+			return 1;
+		case BISS_MODE_AB_UART:
+			return 0;
+        case BISS_MODE_SPI_UART_IRS:
+			return 0;
+		case BISS_MODE_AB_SPI:
+			return 1;
+        case BISS_MODE_DEFAULT_SPI:
+			return 0;
+        default:
+            return 0;
+    }
+}
+
 static void handle_run_command_state(void) {
 	if (queue_cnt > 0) {
 		uint8_t cmd_data_len = CommandQueue[queue_read_cnt].len;
@@ -768,8 +785,10 @@ static void handle_run_command_state(void) {
 					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 					queue_cnt--;
 				} else {
-					handle_select_spi_ch_command(cmd_data[cmd_data_len-1]);
-					complete_command_processing();
+					if (is_spi_ch_selection_allowed(Current_Mode)) {
+						handle_select_spi_ch_command(cmd_data[cmd_data_len-1]);
+						complete_command_processing();
+					}
 				}
 				break;
 					
