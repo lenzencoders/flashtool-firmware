@@ -39,9 +39,9 @@
 #define BISS_ABORT_CNT_CYCLES 					14U		/* Cycles to abort control data frame */
 
 typedef enum{
-    ERROR_TYPE_BISS = 0xDEU,
-    ERROR_TYPE_UART = 0xEFU,
-	ERROR_TYPE_NONE = 0xFFU,
+	ERROR_TYPE_NONE = 0x00,
+	ERROR_TYPE_BISS = 0x01U,
+    ERROR_TYPE_UART = 0x02U
 }UART_Error_Type_t;
 
 typedef enum{
@@ -69,6 +69,12 @@ typedef enum{
 	UART_ERROR_INVALID_CMD = 0x08U,
 	UART_ERROR_INVALID_MODE = 0x09U,
 }UART_Error_t;
+
+typedef struct {
+	UART_Error_Type_t error_type;
+	UART_Error_t error_code;
+	BiSSFaultState_t biss_fault_state;
+}UART_Error_Status_t;
 
 volatile enum{
 	CRC_OK,
@@ -110,10 +116,14 @@ volatile struct{
 	uint8_t FIFO_current_ptr;
 }ReadingStrRenishaw;
 
+UART_Error_Status_t uart_error_status = {
+	.error_type = ERROR_TYPE_NONE,
+	.error_code = UART_ERROR_NONE,
+	.biss_fault_state = BISS_NO_FAULTS,
+};
+
 UartTxStr_t UART_TX;
-UART_Error_t UART_Error = UART_ERROR_NONE;
 UART_State_t UART_State = UART_STATE_IDLE;
-UART_Error_Type_t UART_Error_Type = ERROR_TYPE_NONE;
 CommandQueue_t CommandQueue[QUEUE_SIZE];
 
 volatile uint8_t usb_rx_buffer[RX_BUFFER_SIZE] = {0};
@@ -137,6 +147,8 @@ static QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr
 static uint8_t CalculateCRC(uint8_t *data, uint32_t length);
 static uint8_t CalculateCRCCircularBuffer(uint8_t *buffer, uint16_t buffer_size, uint8_t start_index, uint8_t length);
 static void complete_command_processing(void);
+static void finalize_successful_command(void);
+static void abort_current_command(void);
 static void handle_write_bank_command(uint8_t cmd_data_len, uint16_t cmd_addr, uint8_t* cmd_data);
 static void handle_change_mode_command(uint8_t mode);
 static void handle_page_command(uint8_t data_to_page);
@@ -160,6 +172,8 @@ static void handle_reading_encoder_spi_spi_state(void);
 static void handle_reading_encoder_ab_uart_state(void);
 static void handle_reading_encoder_spi_state(void);
 static void handle_abort_state(void);
+static void handle_read_uart_error_status(uint8_t cmd_data_len, UART_Command_t command);
+static void reset_uart_error_status(void);
 
 
 void TAMP_Init(void) {
@@ -274,7 +288,14 @@ void UART_Transmit(UartTxStr_t *TxStr) { //*ptr to struct
 }
 
 static void complete_command_processing(void) {
+static void finalize_successful_command(void) {
 	UART_State = UART_STATE_IDLE;
+	queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
+	queue_cnt--;
+}
+
+static void abort_current_command(void) {
+	UART_State = UART_STATE_ABORT;
 	queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
 	queue_cnt--;
 }
@@ -286,7 +307,7 @@ static void handle_write_bank_command(uint8_t cmd_data_len, uint16_t cmd_addr, u
 			cmd_data[cmd_data_len] = ((cmd_addr %(0x00A0U & 0xFFU)) % 0x20U) + 6;
 		}
 		if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK) {
-			complete_command_processing();
+			finalize_successful_command();
 			retry_cnt = 0;
 		} else {
 			retry_cnt++;
@@ -295,10 +316,8 @@ static void handle_write_bank_command(uint8_t cmd_data_len, uint16_t cmd_addr, u
 					UART_State = UART_STATE_IDLE;
 					retry_cnt = 0;
 				} else {
-					UART_Error = UART_ERROR_BISS;
-					UART_State = UART_STATE_ABORT;
-					//queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					//queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_BISS;
+					abort_current_command();
 					retry_cnt = 0;
 				}
 			}
@@ -345,10 +364,10 @@ static void handle_page_command(uint8_t data_to_page) {
 	if (IsBiSSReqBusy() != BISS_BUSY) {
 		uint8_t cmd_data_page = data_to_page;
 		if (BiSSRequestWrite(PAGE_ADDR, 1U, &cmd_data_page) == BISS_REQ_OK) {
-			complete_command_processing();
+			finalize_successful_command();
 			retry_cnt = 0;
 			if (EnqueueCommandToBegining(UART_COMMAND_WRITE_REG, BSEL_ADDR, 1U, (uint8_t *)FIRST_USER_BANK) != QUEUE_OK){
-				UART_Error = UART_ERROR_QUEUE_FULL;
+				uart_error_status.error_code = UART_ERROR_QUEUE_FULL;
 				UART_State = UART_STATE_ABORT; 
 			}
 		} else {
@@ -358,10 +377,8 @@ static void handle_page_command(uint8_t data_to_page) {
 					UART_State = UART_STATE_IDLE;
 					retry_cnt = 0;
 				} else {
-					UART_Error = UART_ERROR_BISS;
-					UART_State = UART_STATE_ABORT;
-					//queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					//queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_BISS;
+					abort_current_command();
 					retry_cnt = 0;
 				}
 			}
@@ -417,42 +434,17 @@ static void handle_change_ch1_mode_command(uint8_t ch1_mode) {
 static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, uint8_t* cmd_data) {
 	if (IsBiSSReqBusy() != BISS_BUSY) {
 		if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK) {
-			complete_command_processing();
+			finalize_successful_command();
 			retry_cnt = 0;
 		} else {
 			retry_cnt++;
 			if (retry_cnt >= MAX_RETRY) {
-				UART_Error = UART_ERROR_BISS_WRITE_FAULT;
+				uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
 				UART_State = UART_STATE_ABORT;
 				retry_cnt = 0;
-//					BiSSResetExternalState();
-//					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//					queue_cnt--;
 			}
 		}
 	}
-//	if (retry_cnt >= MAX_RETRY) {
-//			if(BiSSGetFaultState() == BISS_NO_FAULTS) {
-//				UART_State = UART_STATE_IDLE;
-//				retry_cnt = 0;
-//			} else {
-//				UART_Error = UART_ERROR_BISS;
-//				UART_State = UART_STATE_ABORT;
-//				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//				queue_cnt--;
-//				retry_cnt = 0;
-//			}
-//		}
-
-//	} else {
-//		if(BiSSGetFaultState() != BISS_NO_FAULTS) {
-//			UART_Error = UART_ERROR_BISS;
-//			UART_State = UART_STATE_ABORT;
-//			queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//			queue_cnt--;
-//			retry_cnt = 0;
-//		}
-//	}
 }
 
 static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UART_Command_t command) {
@@ -463,46 +455,17 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UAR
 		UART_TX.adr_l = cmd_addr & 0xFFU;
 		
 		if (BiSSRequestRead(cmd_addr, cmd_data_len, UART_TX.Buf) == BISS_REQ_OK) {
-			complete_command_processing();
+			finalize_successful_command();
 			retry_cnt = 0;
 		} else {
 			retry_cnt++;
 			if (retry_cnt >= MAX_RETRY) {
-				UART_Error = UART_ERROR_BISS_READ_FAULT;
+				uart_error_status.error_code = UART_ERROR_BISS_READ_FAULT;
 				UART_State = UART_STATE_ABORT;
 				retry_cnt = 0;
-//				BiSSResetExternalState();
-//				queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//				queue_cnt--;
 			}
 		}
 	}
-					
-//											} else {
-//												retry_cnt++;
-//												if (retry_cnt >= MAX_RETRY) {
-//													if(BiSSGetFaultState() == BISS_NO_FAULTS) {
-//														UART_State = UART_STATE_IDLE;
-//														retry_cnt = 0;
-//													} else {
-//														UART_Error = UART_ERROR_BISS;
-//														UART_State = UART_STATE_ABORT;
-//														queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//														queue_cnt--;
-//														retry_cnt = 0;
-//													}
-//												}
-//												// UART_State = UART_STATE_ABORT;
-//											}
-//										} else {
-//											if(BiSSGetFaultState() != BISS_NO_FAULTS) {
-//												UART_Error = UART_ERROR_BISS;
-//												UART_State = UART_STATE_ABORT;
-//												queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-//												queue_cnt--;
-//												retry_cnt = 0;
-//											}
-//										}
 }
 
 static void handle_write_read_enc_usart2_command(uint8_t cmd_data_len, uint8_t* cmd_data, UART_Command_t command) {
@@ -564,6 +527,23 @@ static void handle_change_current_sensor_mode_command(uint8_t current_mode) {
 			}
 			break;
 	}
+}
+
+static void handle_read_uart_error_status(uint8_t cmd_data_len, UART_Command_t command) {
+	UART_TX.cmd = command;
+	UART_TX.len = cmd_data_len;
+	UART_TX.adr_h = 0;
+	UART_TX.adr_l = 0;
+	UART_TX.Buf[0] = (uint8_t)uart_error_status.error_type;
+	UART_TX.Buf[1] = (uint8_t)uart_error_status.error_code;
+//	UART_TX.Buf[2] = (uint8_t)BiSSGetFaultState();
+	UART_TX.Buf[2] = (uint8_t)uart_error_status.biss_fault_state;
+	UART_Transmit(&UART_TX);
+}
+
+static void reset_uart_error_status(void) {
+	uart_error_status.error_type = ERROR_TYPE_NONE;
+	uart_error_status.error_code = UART_ERROR_NONE;
 }
 
 static void handle_read_enc2_current_command(uint8_t cmd_data_len, UART_Command_t command) {
@@ -683,15 +663,14 @@ static void handle_receive_state(uint8_t crc, uint8_t calculated_crc) {
 			if (EnqueueCommand(command, cmd_addr, cmd_data_len, cmd_data) == QUEUE_OK) {
 				UART_State = UART_STATE_RUNCMD;
 			} else {
-				UART_Error = UART_ERROR_QUEUE_FULL;
+				uart_error_status.error_code = UART_ERROR_QUEUE_FULL;
 				UART_State = UART_STATE_ABORT;  
 			}
 		} else {
-			UART_Error = UART_ERROR_CRC;
 			UART_State = UART_STATE_CHECKCRC;
 		}
 	} else {
-		UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
+		uart_error_status.error_code = UART_ERROR_LEN_DATA_IS_ZERO;
 		UART_State = UART_STATE_ABORT;
 	}
 	dma_rx_cnt = (dma_rx_cnt + uart_expected_length) % RX_BUFFER_SIZE;
@@ -736,75 +715,69 @@ static void handle_run_command_state(void) {
 				
 			case UART_COMMAND_CHANGE_MODE:
 				if(cmd_data_len > 1) {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
 				} else {
 					handle_change_mode_command(cmd_data[cmd_data_len-1]);
-					complete_command_processing();
+					finalize_successful_command();
 				}
 				break;
 												
 			case UART_COMMAND_PAGE:
 				if(cmd_data_len > 1) {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
 				} else {
 					handle_page_command(cmd_data[cmd_data_len-1]);
 				}
 				break;
 				
 			case UART_COMMAND_ENC1_POWER_OFF:
-				EncoderPowerDisable();
-				complete_command_processing();	
+				if(Current_Mode != BISS_MODE_DEFAULT_SPI){
+					EncoderPowerDisable();
+				}
+				finalize_successful_command();	
 				break;
 			
 			case UART_COMMAND_ENC1_POWER_ON:
 				if(Current_Mode != BISS_MODE_DEFAULT_SPI){
 					EncoderPowerEnable();
 				}
-				complete_command_processing();
+				finalize_successful_command();
 				break;	
 			
 			case UART_COMMAND_ENC2_POWER_OFF:
 				EncoderSecondPowerDisable();
-				complete_command_processing();	
+				finalize_successful_command();	
 				break;
 			
 			case UART_COMMAND_ENC2_POWER_ON:
 				EncoderSecondPowerEnable();
-				complete_command_processing();
+				finalize_successful_command();
 				break;
 						
 			case UART_COMMAND_SELECT_SPI_CH:
 				if(cmd_data_len > 1) {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
 				} else {
 					if (is_spi_ch_selection_allowed(Current_Mode)) {
 						handle_select_spi_ch_command(cmd_data[cmd_data_len-1]);
+						finalize_successful_command();
 					} else {
-						UART_State = UART_STATE_ABORT;
-						UART_Error = UART_ERROR_INVALID_MODE;
+						uart_error_status.error_code = UART_ERROR_INVALID_MODE;
+						abort_current_command();
 					}
-					complete_command_processing();
 				}
 				break;
 					
 			case UART_COMMAND_CHANGE_CH1_MODE:
 				if(cmd_data_len > 1) {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
 				} else {
 					handle_change_ch1_mode_command(cmd_data[cmd_data_len-1]);			
-					complete_command_processing();
+					finalize_successful_command();
 				}
 				break;
 				
@@ -816,9 +789,8 @@ static void handle_run_command_state(void) {
 					handle_write_reg_command(cmd_data_len, cmd_addr, cmd_data);
 				}
 				else {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_INVALID_MODE;
-					complete_command_processing();
+					uart_error_status.error_code = UART_ERROR_INVALID_MODE;
+					abort_current_command();
 				}				
 				break;
 
@@ -830,42 +802,39 @@ static void handle_run_command_state(void) {
 					handle_read_reg_command(cmd_data_len, cmd_addr, command);
 				}
 				else {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_INVALID_MODE;
-					complete_command_processing();
+					uart_error_status.error_code = UART_ERROR_INVALID_MODE;
+					abort_current_command();
 				}
 				break;
 								
 			case UART_COMMAND_WRITE_READ_ENC_USART2:
 				handle_write_read_enc_usart2_command(cmd_data_len, cmd_data, command);
-				complete_command_processing();
+				finalize_successful_command();
 				break;
 			
 			case UART_COMMAND_READ_ANGLE_ENC_SPI_INSTANT:
 				handle_read_angle_enc_spi_instant_command(cmd_data_len, command);
-				complete_command_processing();
+				finalize_successful_command();
 				break;
 
 			case UART_COMMAND_CHANGE_CURRENT_SENSOR_MODE:
 				if(cmd_data_len > 1) {
-					UART_State = UART_STATE_ABORT;
-					UART_Error = UART_ERROR_LEN_DATA_IS_ZERO;
-					queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-					queue_cnt--;
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
 				} else {
 					handle_change_current_sensor_mode_command(cmd_data[cmd_data_len-1]);
-					complete_command_processing();
+					finalize_successful_command();
 				}
 				break;
 			
 			case UART_COMMAND_READ_ENC2_CURRENT:
 				handle_read_enc2_current_command(cmd_data_len, command);
-				complete_command_processing();
+				finalize_successful_command();
 				break;
 			
 			case UART_COMMAND_READ_ANGLE_PACKET_ENC_SPI_INSTANT:
 				handle_read_angle_packet_enc_spi_instant_command(cmd_data_len, command);
-				complete_command_processing();
+				finalize_successful_command();
 				break;
 					
 			case UART_COMMAND_READ_ANGLE_TWO_ENC_AB_SPI:
@@ -892,13 +861,24 @@ static void handle_run_command_state(void) {
 				NVIC_SystemReset();
 				break;
 			
+			case UART_COMMAND_READ_UART_ERROR_STATUS:
+				if(cmd_data_len != 3) {
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
+				} else {
+					handle_read_uart_error_status(cmd_data_len, command);
+	//				reset_uart_error_status();
+					finalize_successful_command();
+				}
+				break;
+						
 			case UART_COMMAND_REBOOT_TO_BL:
 				JumpToBootloader();
 				break;
 						
 			default:
-				UART_Error = UART_ERROR_INVALID_CMD;
-				UART_State = UART_STATE_ABORT;
+				uart_error_status.error_code = UART_ERROR_INVALID_CMD;
+				abort_current_command();
 				break;
 		}
 	}
@@ -1063,64 +1043,45 @@ static void handle_reading_encoder_spi_state(void) {
 }
 
 static void handle_abort_state(void) {
-	switch(UART_Error) {
+	switch(uart_error_status.error_code) {
 		case UART_ERROR_CRC:
-			UART_Error_Type = ERROR_TYPE_UART;
-			UART_TX.cmd = (uint8_t)UART_Error_Type;
-			UART_TX.len = 1;
-			UART_TX.adr_h = 0;
-			UART_TX.adr_l = 0;
-//			UART_TX.Buf[0] = (uint8_t)UART_Error_Type;
-			UART_TX.Buf[0] = (uint8_t)UART_Error;
-			UART_Transmit(&UART_TX);
+			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 				
 		case UART_ERROR_QUEUE_FULL:
-			UART_Error_Type = ERROR_TYPE_UART;
-			UART_TX.cmd = (uint8_t)UART_Error_Type;
-			UART_TX.len = 1;
-			UART_TX.adr_h = 0;
-			UART_TX.adr_l = 0;
-//			UART_TX.Buf[0] = (uint8_t)UART_Error_Type;
-			UART_TX.Buf[0] = (uint8_t)UART_Error;
-			UART_Transmit(&UART_TX);
+			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 				
 		case UART_ERROR_BISS:
-			UART_Error_Type = ERROR_TYPE_BISS;
-			UART_TX.cmd = (uint8_t)UART_Error_Type;
-			UART_TX.len = 1;
-			UART_TX.adr_h = 0;
-			UART_TX.adr_l = 0;
-//			UART_TX.Buf[0] = (uint8_t)UART_Error_Type;
-			UART_TX.Buf[0] = (uint8_t)BiSSGetFaultState();
-			UART_Transmit(&UART_TX);
+			uart_error_status.error_type = ERROR_TYPE_BISS;
+			uart_error_status.biss_fault_state = BiSSGetFaultState();
+			BiSSResetExternalState();  // reset BiSS.ExternalState
+			break;
+		
+		case UART_ERROR_BISS_WRITE_FAULT:
+			uart_error_status.error_type = ERROR_TYPE_BISS;
+			uart_error_status.biss_fault_state = BiSSGetFaultState();
+			break;
+		
+		case UART_ERROR_BISS_READ_FAULT:
+			uart_error_status.error_type = ERROR_TYPE_BISS;
+			uart_error_status.biss_fault_state = BiSSGetFaultState();
 			break;
 				
 		case UART_ERROR_LEN_DATA_IS_ZERO:
-			UART_Error_Type = ERROR_TYPE_UART;
-			UART_TX.cmd = (uint8_t)UART_Error_Type;
-			UART_TX.len = 1;
-			UART_TX.adr_h = 0;
-			UART_TX.adr_l = 0;
-//			UART_TX.Buf[0] = (uint8_t)UART_Error_Type;
-			UART_TX.Buf[0] = (uint8_t)UART_Error;
-			UART_Transmit(&UART_TX);
+			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 		
 		case UART_ERROR_LEN_IS_NOT_CORRECT:
-			UART_Error_Type = ERROR_TYPE_UART;
-			UART_TX.cmd = (uint8_t)UART_Error_Type;
-			UART_TX.len = 1;
-			UART_TX.adr_h = 0;
-			UART_TX.adr_l = 0;
-			UART_TX.Buf[0] = (uint8_t)UART_Error;
-			UART_Transmit(&UART_TX);
+			uart_error_status.error_type = ERROR_TYPE_UART;
+			break;
+		
+		case UART_ERROR_INVALID_MODE:
+			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 		
 		case UART_ERROR_INVALID_CMD:
-			queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
-			queue_cnt--;
+			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 		
 		default:
@@ -1129,8 +1090,7 @@ static void handle_abort_state(void) {
 			__NOP();
 			break;
 	}
-	
-//	UART_Error = UART_ERROR_NONE;
+
 	UART_State = UART_STATE_IDLE;
 }
 
@@ -1143,15 +1103,15 @@ void UART_StateMachine(void) {
 //			cnt_error_cycles++;
 //			if (cnt_error_cycles == BISS_ABORT_CNT_CYCLES) {
 //				cnt_error_cycles = 0;
-//				UART_Error = UART_ERROR_BISS;
+//				uart_error_status.error_code = UART_ERROR_BISS;
 //				UART_State = UART_STATE_ABORT;
 //				BiSSResetExternalState();
 //			}
 //		}
 	
-	if(IsBiSSReqBusy() ==	BISS_READ_FINISHED) {
-			UART_Transmit(&UART_TX);
-			BiSSResetExternalState();
+	if(IsBiSSReqBusy() == BISS_READ_FINISHED) {
+		UART_Transmit(&UART_TX);
+		BiSSResetExternalState();
 	}
 		
     switch (UART_State) {
@@ -1164,7 +1124,7 @@ void UART_StateMachine(void) {
 			break;
 
         case UART_STATE_CHECKCRC: // TODO ???
-			UART_Error = UART_ERROR_CRC;
+			uart_error_status.error_code = UART_ERROR_CRC;
 			UART_State = UART_STATE_ABORT;  // TODO  handle CRC error
 			break;
 

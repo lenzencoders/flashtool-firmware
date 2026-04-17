@@ -42,6 +42,7 @@ typedef enum{
 	UART_COMMAND_READ_ANGLE_ENC_SPI = 0x81U,
 	UART_COMMAND_READ_REG 	= 0x82U,
 	UART_COMMAND_NRST	= 0x83U,
+	UART_COMMAND_READ_UART_ERROR_STATUS = 0xFEU,
 	UART_COMMAND_REBOOT_TO_BL = 0xFFU,
 }UART_Command_t;
 
@@ -55,6 +56,7 @@ typedef struct {
 
 
 extern UartTxStr_t UART_TX;
+
 //End move
 
 void UART_Transmit(UartTxStr_t *TxStr);
