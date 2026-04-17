@@ -146,7 +146,6 @@ static QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t 
 static QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data);
 static uint8_t CalculateCRC(uint8_t *data, uint32_t length);
 static uint8_t CalculateCRCCircularBuffer(uint8_t *buffer, uint16_t buffer_size, uint8_t start_index, uint8_t length);
-static void complete_command_processing(void);
 static void finalize_successful_command(void);
 static void abort_current_command(void);
 static void handle_write_bank_command(uint8_t cmd_data_len, uint16_t cmd_addr, uint8_t* cmd_data);
@@ -287,7 +286,6 @@ void UART_Transmit(UartTxStr_t *TxStr) { //*ptr to struct
 	LL_DMA_EnableChannel(DMA_LPUART_TX);
 }
 
-static void complete_command_processing(void) {
 static void finalize_successful_command(void) {
 	UART_State = UART_STATE_IDLE;
 	queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
