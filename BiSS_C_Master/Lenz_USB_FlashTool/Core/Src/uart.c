@@ -679,7 +679,7 @@ static uint8_t is_spi_ch_selection_allowed(uint8_t mode) {
         case BISS_MODE_SPI_SPI:
 			return 1;
 		case BISS_MODE_AB_UART:
-			return 0;
+			return 1;
         case BISS_MODE_SPI_UART_IRS:
 			return 0;
 		case BISS_MODE_AB_SPI:
@@ -783,7 +783,7 @@ static void handle_run_command_state(void) {
 				if (Current_Mode == BISS_MODE_SPI_SPI) {
 					handle_write_reg_command(cmd_data_len, cmd_addr, cmd_data);
 				} 
-				else if ((Current_Mode == BISS_MODE_AB_SPI || Current_Mode == BISS_MODE_DEFAULT_SPI) && BiSS_SPI_Ch == BISS_SPI_CH_2) {
+				else if ((Current_Mode == BISS_MODE_AB_UART || Current_Mode == BISS_MODE_AB_SPI || Current_Mode == BISS_MODE_DEFAULT_SPI) && BiSS_SPI_Ch == BISS_SPI_CH_2) {
 					handle_write_reg_command(cmd_data_len, cmd_addr, cmd_data);
 				}
 				else {
@@ -796,7 +796,7 @@ static void handle_run_command_state(void) {
 				if (Current_Mode == BISS_MODE_SPI_SPI) {
 					handle_read_reg_command(cmd_data_len, cmd_addr, command);
 				} 
-				else if ((Current_Mode == BISS_MODE_AB_SPI || Current_Mode == BISS_MODE_DEFAULT_SPI) && BiSS_SPI_Ch == BISS_SPI_CH_2) {
+				else if ((Current_Mode == BISS_MODE_AB_UART || Current_Mode == BISS_MODE_AB_SPI || Current_Mode == BISS_MODE_DEFAULT_SPI) && BiSS_SPI_Ch == BISS_SPI_CH_2) {
 					handle_read_reg_command(cmd_data_len, cmd_addr, command);
 				}
 				else {
