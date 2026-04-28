@@ -1,0 +1,3 @@
+[submodule "BiSS_C_Master/lib/BiSS_C_Master"]
+	path = BiSS_C_Master/lib/BiSS_C_Master
+	url = https://github.com/lenzencoders/biss-c-master.git
