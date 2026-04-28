@@ -1,0 +1,40 @@
+# Project files (user-specific)
+*.uvopt
+*.uvoptx
+*.uvguix.*
+*.uvproj.user
+*.uvmpw
+
+# Build outputs
+*.axf
+*.elf
+*.bin
+*.map
+*.lst
+*.d
+*.crf
+*.o
+*.dep
+*.lnp
+*.iex
+*.htm
+*.sct
+*.bak
+*.build_log.htm
+
+# Debug files
+*.cdb
+*.dbg
+*.ini
+*.scvd
+
+# Object and Listing directories
+*/Obj/
+*/List/
+
+# Keil temporary files
+*.plg
+*.tra
+*.log
+*.tmp
+*.bat
