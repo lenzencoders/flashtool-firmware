@@ -118,5 +118,9 @@ st-flash write bootloader_FT_ver_1_0_3.hex 0x8000000
 
 # 4. Flash application via bootloader
 cd ../lenz-flashtool-lib
-python -c "from core import FlashToolUpdater; FlashToolUpdater().download_fw_to_ft('app_1.0.12.hex')"
+python -c "import logging
+import lenz_flashtool as lenz
+lenz.init_logging('flashtool.log', logging.INFO, logging.DEBUG)
+with lenz.FlashTool(port_description_prefixes=('XR21V')) as ft:
+    ft.download_fw_to_ft('app_1.0.12.hex', max_retries=3, pbar=True)"
 ```
