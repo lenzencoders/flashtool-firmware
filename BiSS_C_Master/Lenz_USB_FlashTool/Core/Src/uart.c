@@ -130,18 +130,16 @@ volatile uint8_t usb_rx_buffer[RX_BUFFER_SIZE] = {0};
 uint8_t usb_tx_buffer[TX_BUFFER_SIZE] = {0};
 uint8_t hex_line_buffer[UART_LINE_SIZE] = {0};
 
-uint32_t dma_rx_cnt = 0; 
+uint16_t dma_rx_cnt = 0; 
 volatile uint32_t uart_expected_length = 0; 
 volatile uint8_t uart_length = 0;
-volatile uint32_t new_cnt = 0;
+volatile uint16_t new_cnt = 0;
 uint8_t queue_read_cnt = 0;
 uint8_t queue_write_cnt = 0;
 uint8_t queue_cnt = 0;
 uint8_t retry_cnt = 0;
 
-void JumpToBootloader(void);
-void UART_Config(void);
-void UART_Transmit(UartTxStr_t *TxStr);
+
 static QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data);
 static QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data);
 static uint8_t CalculateCRC(uint8_t *data, uint32_t length);
@@ -173,118 +171,9 @@ static void handle_reading_encoder_spi_state(void);
 static void handle_abort_state(void);
 static void handle_read_uart_error_status(uint8_t cmd_data_len, UART_Command_t command);
 static void reset_uart_error_status(void);
+static inline void uart_flush_rx(void);
+static inline uint16_t uart_get_dma_write_pos(void);
 
-
-void TAMP_Init(void) {
-	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
-	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
-	LL_RCC_EnableRTC();
-	LL_PWR_EnableBkUpAccess();	
-	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
-	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_4SAMPLE);
-	SET_BIT(TAMP->IER, TAMP_IER_TAMP1IE);	
-	LL_RTC_TAMPER_Enable(RTC, LL_RTC_TAMPER_1);
-	NVIC_SetPriority(RTC_TAMP_LSECSS_IRQn, 1);
-	NVIC_EnableIRQ(RTC_TAMP_LSECSS_IRQn);
-}
-
-void TAMP_DeInit(void)
-{
-	CLEAR_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
-	NVIC_DisableIRQ(RTC_TAMP_LSECSS_IRQn);
-	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
-	WRITE_REG(TAMP->SCR, TAMP_SCR_CTAMP1F);
-	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_DISABLE);
-	LL_PWR_DisableBkUpAccess();
-	LL_RCC_DisableRTC();
-	LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
-}
-
-void Stay_in_FW_Config(void) {
-	ClearTampFlag(TAMP_FLAGS_STAY_BL);
-	SetTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
-}
-
-void JumpToBootloader(void) {
-	ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
-	SetTampFlag(TAMP_FLAGS_STAY_BL);
-//		ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
-	TAMP_DeInit();
-    NVIC_SystemReset();
-}
-
-QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
-	if (queue_cnt < QUEUE_SIZE){
-		CommandQueue[queue_write_cnt].len = len;
-		CommandQueue[queue_write_cnt].addr = addr;
-		CommandQueue[queue_write_cnt].cmd = cmd;
-		memcpy(CommandQueue[queue_write_cnt].data, data, len);
-		queue_write_cnt = (queue_write_cnt + 1U) % QUEUE_SIZE;
-		queue_cnt++;
-		return QUEUE_OK;
-	}
-	return QUEUE_FULL;
-}
-
-QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
-	if (queue_cnt < QUEUE_SIZE) {
-		queue_read_cnt = (queue_read_cnt + QUEUE_SIZE - 1U) % QUEUE_SIZE;
-		CommandQueue[queue_read_cnt].len = len;
-		CommandQueue[queue_read_cnt].addr = addr;
-		CommandQueue[queue_read_cnt].cmd = cmd;
-		memcpy(CommandQueue[queue_read_cnt].data, data, len);
-		queue_cnt++;
-		return QUEUE_OK;
-	}
-	return QUEUE_FULL;
-}
-
-void UART_Config(void) {
-	LL_TIM_EnableIT_UPDATE(BISS_Task_TIM);
-	LL_TIM_EnableCounter(BISS_Task_TIM);
-	LL_DMA_SetMemoryAddress(DMA_LPUART_RX, (uint32_t)usb_rx_buffer);
-	LL_DMA_SetPeriphAddress(DMA_LPUART_RX, (uint32_t)&LPUART1->RDR);
-	LL_DMA_SetMemoryAddress(DMA_LPUART_TX, (uint32_t)usb_tx_buffer);
-	LL_DMA_SetPeriphAddress(DMA_LPUART_TX, (uint32_t)&LPUART1->TDR);
-	LL_DMA_SetDataLength(DMA_LPUART_RX, RX_BUFFER_SIZE);
-	LL_LPUART_EnableDMAReq_RX(LPUART1);
-	LL_LPUART_EnableDMAReq_TX(LPUART1);
-	LL_DMA_EnableChannel(DMA_LPUART_RX);
-}
-
-uint8_t CalculateCRC(uint8_t *data, uint32_t length) {
-    uint32_t sum = 0;
-    for (uint32_t i = 0; i < length; i++) {
-        sum += data[i];
-    }
-    uint8_t lsb = sum & 0xFF;
-    return (uint8_t)(~lsb + 1);
-}
-
-uint8_t CalculateCRCCircularBuffer(uint8_t *buffer, uint16_t buffer_size, uint8_t start_index, uint8_t length) {
-     uint8_t sum = 0;
-    for (uint8_t i = 0; i < length; i++) {
-        uint8_t index = (start_index + i) % buffer_size;
-        sum += buffer[index];
-    }
-    uint8_t lsb = sum & 0xFF;
-    return (uint8_t)(~lsb + 1);
-}
-
-void UART_Transmit(UartTxStr_t *TxStr) { //*ptr to struct
-	uint8_t size = TxStr->len;
-	if (size > TX_BUFFER_SIZE) {
-		size = TX_BUFFER_SIZE; // handle error
-	}
-	LL_DMA_DisableChannel(DMA_LPUART_TX);
-	LL_DMA_SetDataLength(DMA_LPUART_TX, size + 5U); //1U for CRC additional byte
-	//len, addr, cmd
-	memcpy(usb_tx_buffer, TxStr, size + 4U);
-	usb_tx_buffer[3] += 0x10U;
-	uint8_t crc = CalculateCRC(usb_tx_buffer, size + 4U);
-	usb_tx_buffer[size + 4U] = crc;
-	LL_DMA_EnableChannel(DMA_LPUART_TX);
-}
 
 static void finalize_successful_command(void) {
 	UART_State = UART_STATE_IDLE;
@@ -623,7 +512,7 @@ static void handle_idle_state(void) {
 //		UART_Transmit(read_buf, RX_BUFFER_SIZE);
 //	}
 	uint8_t bytes_received;
-	new_cnt = RX_BUFFER_SIZE - LL_DMA_GetDataLength(DMA_LPUART_RX);
+	new_cnt = uart_get_dma_write_pos();
 	if (dma_rx_cnt != new_cnt) {
 		bytes_received = (new_cnt - dma_rx_cnt + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
 		uart_length = usb_rx_buffer[dma_rx_cnt];
@@ -855,7 +744,10 @@ static void handle_run_command_state(void) {
 				UART_State = UART_STATE_ANGLE_READING_ENC_SPI;
 				break;
 
-			case UART_COMMAND_NRST:		
+			case UART_COMMAND_NRST:
+				__disable_irq();
+				__DSB();
+				__ISB();
 				NVIC_SystemReset();
 				break;
 			
@@ -909,9 +801,11 @@ static void handle_reading_encoder_ab_spi_state(void) {
 				UART_Transmit(&UART_TX);
 			}
 		} else {
+			uart_flush_rx();
 			UART_State = UART_STATE_IDLE;
 		}
 	} else {
+		uart_flush_rx();
 		UART_State = UART_STATE_IDLE;
 	}
 }
@@ -944,9 +838,11 @@ static void handle_reading_encoder_spi_spi_state(void) {
 				UART_Transmit(&UART_TX);
 			}
 		} else {
+			uart_flush_rx();
 			UART_State = UART_STATE_IDLE;
 		}			
 	}	else {
+		uart_flush_rx();
 		UART_State = UART_STATE_IDLE;
 	}
 }
@@ -978,9 +874,11 @@ static void handle_reading_encoder_ab_uart_state(void) {
 				UART_Transmit(&UART_TX);
 			}
 		} else {
+			uart_flush_rx();
 			UART_State = UART_STATE_IDLE;
 		}
 	} else {
+		uart_flush_rx();
 		UART_State = UART_STATE_IDLE;
 	}
 }
@@ -1006,10 +904,12 @@ static void handle_reading_encoder_spi_state(void) {
 					UART_Transmit(&UART_TX);
 				}
 			} else {
+				uart_flush_rx();
 				UART_State = UART_STATE_IDLE;
 			}
 		} else {
-				UART_State = UART_STATE_IDLE;
+			uart_flush_rx();
+			UART_State = UART_STATE_IDLE;
 		}
 	}
 	else if(BiSS_SPI_Ch == BISS_SPI_CH_2) {
@@ -1032,10 +932,12 @@ static void handle_reading_encoder_spi_state(void) {
 					UART_Transmit(&UART_TX);
 				}
 			} else {
+				uart_flush_rx();
 				UART_State = UART_STATE_IDLE;
 			}
 		} else {
-				UART_State = UART_STATE_IDLE;
+			uart_flush_rx();
+			UART_State = UART_STATE_IDLE;
 		}
 	}
 }
@@ -1044,6 +946,7 @@ static void handle_abort_state(void) {
 	switch(uart_error_status.error_code) {
 		case UART_ERROR_CRC:
 			uart_error_status.error_type = ERROR_TYPE_UART;
+			uart_flush_rx();
 			break;
 				
 		case UART_ERROR_QUEUE_FULL:
@@ -1068,10 +971,12 @@ static void handle_abort_state(void) {
 				
 		case UART_ERROR_LEN_DATA_IS_ZERO:
 			uart_error_status.error_type = ERROR_TYPE_UART;
+			uart_flush_rx();
 			break;
 		
 		case UART_ERROR_LEN_IS_NOT_CORRECT:
 			uart_error_status.error_type = ERROR_TYPE_UART;
+			uart_flush_rx();
 			break;
 		
 		case UART_ERROR_INVALID_MODE:
@@ -1080,6 +985,7 @@ static void handle_abort_state(void) {
 		
 		case UART_ERROR_INVALID_CMD:
 			uart_error_status.error_type = ERROR_TYPE_UART;
+			uart_flush_rx();
 			break;
 		
 		default:
@@ -1090,6 +996,131 @@ static void handle_abort_state(void) {
 	}
 
 	UART_State = UART_STATE_IDLE;
+}
+
+static inline void uart_flush_rx(void)
+{
+    dma_rx_cnt = uart_get_dma_write_pos();
+}
+
+static inline uint16_t uart_get_dma_write_pos(void)
+{
+    return RX_BUFFER_SIZE - LL_DMA_GetDataLength(DMA_LPUART_RX);
+}
+
+
+
+void TAMP_Init(void) {
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+	LL_RCC_EnableRTC();
+	LL_PWR_EnableBkUpAccess();	
+	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
+	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_4SAMPLE);
+	SET_BIT(TAMP->IER, TAMP_IER_TAMP1IE);	
+	LL_RTC_TAMPER_Enable(RTC, LL_RTC_TAMPER_1);
+	NVIC_SetPriority(RTC_TAMP_LSECSS_IRQn, 1);
+	NVIC_EnableIRQ(RTC_TAMP_LSECSS_IRQn);
+}
+
+void TAMP_DeInit(void)
+{
+	CLEAR_BIT(TAMP->IER, TAMP_IER_TAMP1IE);
+	NVIC_DisableIRQ(RTC_TAMP_LSECSS_IRQn);
+	LL_RTC_TAMPER_Disable(RTC, LL_RTC_TAMPER_1);
+	WRITE_REG(TAMP->SCR, TAMP_SCR_CTAMP1F);
+	LL_RTC_TAMPER_SetFilterCount(RTC, LL_RTC_TAMPER_FILTER_DISABLE);
+	LL_PWR_DisableBkUpAccess();
+	LL_RCC_DisableRTC();
+	LL_APB1_GRP1_DisableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+}
+
+void Stay_in_FW_Config(void) {
+	ClearTampFlag(TAMP_FLAGS_STAY_BL);
+	SetTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+}
+
+void JumpToBootloader(void) {
+	ClearTampFlag(TAMP_FLAGS_STAY_MAIN_FW);
+	SetTampFlag(TAMP_FLAGS_STAY_BL);
+	TAMP_DeInit();
+	__disable_irq();
+	__DSB();
+	__ISB();
+    NVIC_SystemReset();
+}
+
+QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
+	if (queue_cnt < QUEUE_SIZE){
+		CommandQueue[queue_write_cnt].len = len;
+		CommandQueue[queue_write_cnt].addr = addr;
+		CommandQueue[queue_write_cnt].cmd = cmd;
+		memcpy(CommandQueue[queue_write_cnt].data, data, len);
+		queue_write_cnt = (queue_write_cnt + 1U) % QUEUE_SIZE;
+		queue_cnt++;
+		return QUEUE_OK;
+	}
+	return QUEUE_FULL;
+}
+
+QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data) {
+	if (queue_cnt < QUEUE_SIZE) {
+		queue_read_cnt = (queue_read_cnt + QUEUE_SIZE - 1U) % QUEUE_SIZE;
+		CommandQueue[queue_read_cnt].len = len;
+		CommandQueue[queue_read_cnt].addr = addr;
+		CommandQueue[queue_read_cnt].cmd = cmd;
+		memcpy(CommandQueue[queue_read_cnt].data, data, len);
+		queue_cnt++;
+		return QUEUE_OK;
+	}
+	return QUEUE_FULL;
+}
+
+void UART_Config(void) {
+	LL_TIM_EnableIT_UPDATE(BISS_Task_TIM);
+	LL_TIM_EnableCounter(BISS_Task_TIM);
+	LL_DMA_SetMemoryAddress(DMA_LPUART_RX, (uint32_t)usb_rx_buffer);
+	LL_DMA_SetPeriphAddress(DMA_LPUART_RX, (uint32_t)&LPUART1->RDR);
+	LL_DMA_SetMemoryAddress(DMA_LPUART_TX, (uint32_t)usb_tx_buffer);
+	LL_DMA_SetPeriphAddress(DMA_LPUART_TX, (uint32_t)&LPUART1->TDR);
+	LL_DMA_SetDataLength(DMA_LPUART_RX, RX_BUFFER_SIZE);
+	LL_LPUART_EnableDMAReq_RX(LPUART1);
+	LL_LPUART_EnableDMAReq_TX(LPUART1);
+	LL_DMA_EnableChannel(DMA_LPUART_RX);
+}
+
+uint8_t CalculateCRC(uint8_t *data, uint32_t length) {
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i < length; i++) {
+        sum += data[i];
+    }
+    uint8_t lsb = sum & 0xFF;
+    return (uint8_t)(~lsb + 1);
+}
+
+uint8_t CalculateCRCCircularBuffer(uint8_t *buffer, uint16_t buffer_size, uint8_t start_index, uint8_t length) {
+     uint8_t sum = 0;
+    for (uint8_t i = 0; i < length; i++) {
+        uint8_t index = (start_index + i) % buffer_size;
+        sum += buffer[index];
+    }
+    uint8_t lsb = sum & 0xFF;
+    return (uint8_t)(~lsb + 1);
+}
+
+void UART_Transmit(UartTxStr_t *TxStr) { //*ptr to struct
+	uint8_t size = TxStr->len;
+	if (size > TX_BUFFER_SIZE) {
+		size = TX_BUFFER_SIZE; // handle error
+	}
+	LL_DMA_DisableChannel(DMA_LPUART_TX);
+	LL_DMA_SetDataLength(DMA_LPUART_TX, size + 5U); //1U for CRC additional byte
+	//len, addr, cmd
+	memcpy(usb_tx_buffer, TxStr, size + 4U);
+	usb_tx_buffer[3] += 0x10U;
+	uint8_t crc = CalculateCRC(usb_tx_buffer, size + 4U);
+	usb_tx_buffer[size + 4U] = crc;
+	LL_DMA_EnableChannel(DMA_LPUART_TX);
 }
 
 void UART_StateMachine(void) {

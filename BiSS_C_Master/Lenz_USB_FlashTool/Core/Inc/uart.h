@@ -69,6 +69,7 @@ void TAMP_Init(void);
 void TAMP_DeInit(void);
 
 void Stay_in_FW_Config(void);
+void JumpToBootloader(void);
 	
 #ifdef __cplusplus
 }
