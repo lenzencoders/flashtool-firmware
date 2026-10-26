@@ -105,7 +105,7 @@ int main(void)
 	MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_CORDIC_Init();
-	MX_LPUART1_UART_Init();
+//	MX_LPUART1_UART_Init();
 	MX_TIM7_Init();
 //	MX_ADC1_Init();
 //	MX_TIM3_Init();
@@ -117,7 +117,7 @@ int main(void)
 	Stay_in_FW_Config();
 	Current_Sensor_Init();
 	BiSS_C_Master_HAL_Init();
-	UART_Config();
+	LPUART_Init();
 	
 	/* USER CODE END 2 */
 
@@ -125,6 +125,7 @@ int main(void)
 	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
+		UartTask();
 	/* USER CODE END WHILE */
 
 	/* USER CODE BEGIN 3 */
