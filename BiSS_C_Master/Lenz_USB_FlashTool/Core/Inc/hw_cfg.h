@@ -42,8 +42,17 @@ extern volatile Current_Sensor_Mode_t Current_Sensor_Mode;
 	
 #define BISS_Task_TIM 				TIM7
 #define BISS_Task_IRQHandler 		TIM7_IRQHandler
+#define LPUART                      LPUART1
+#define LPUART_RX_IRQ               LPUART1_IRQn
+#define LPUART_RX_IRQHandler        LPUART1_IRQHandler
+#define DMA_LPUART                  DMA1
 #define DMA_LPUART_RX 				DMA1, LL_DMA_CHANNEL_1
+#define DMA_LPUART_RX_CHANNEL       LL_DMA_CHANNEL_1
 #define DMA_LPUART_TX 				DMA1, LL_DMA_CHANNEL_2
+#define DMA_LPUART_TX_CHANNEL       LL_DMA_CHANNEL_2
+#define DMA_LPUART_TX_IRQ           DMA1_Channel2_IRQn
+#define DMA_LPUART_TX_IRQHandle     DMA1_Channel2_IRQHandler
+
 #define DMA_ADC1					DMA1, LL_DMA_CHANNEL_6
 
 /* BiSS1 SPI Config*/
