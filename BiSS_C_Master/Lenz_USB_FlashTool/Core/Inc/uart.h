@@ -27,6 +27,7 @@ typedef enum
 {
 	UART_COMMAND_WRITE_BANK                        = 0x00,  /* Reserved */
 	UART_COMMAND_CHANGE_MODE                       = 0x01U,
+	UART_COMMAND_RUN_PROGRAM                       = 0x02U,  /* Bootloader: run main FW */
 	UART_COMMAND_WRITE_CRC                         = 0x03U,  /* Reserved */
 	UART_COMMAND_PAGE                              = 0x04U,  /* Reserved */
 	UART_COMMAND_ENC1_POWER_OFF                    = 0x08U,

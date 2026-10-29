@@ -45,11 +45,22 @@
 #define TX_DMA_OVERHEAD                         5U
 /* Bit added to the command byte in every reply frame. */
 #define TX_CMD_REPLY_FLAG                       0x10U
+/* Maximum number of stream frames the FIFO can hold without overwriting
+ * unread data. The host must not request more than this. */
+#define STREAM_MAX_FRAMES                       0xFFFFU
 
 
 /*==========================================================================*/
 /* Type definitions                                                         */
 /*==========================================================================*/
+
+/* Async command state machine. */
+typedef enum
+{
+    CMD_STATE_IDLE = 0,      /* No async operation in progress.            */
+    CMD_STATE_READ_PENDING,  /* BiSS read issued, waiting for completion.  */
+    CMD_STATE_WRITE_PENDING, /* BiSS write issued, waiting for completion. */
+} CmdState_t;
 
 /* Error type classification. */
 typedef enum
@@ -171,7 +182,7 @@ static uint8_t CalculateCRCCircularBuffer(uint8_t *buffer,
                                           uint8_t length);
 static void finalize_successful_command(void);
 static void abort_current_command(UART_Command_t cmd);
-static uint8_t UART_CommandHasReply(UART_Command_t cmd);
+static uint8_t UART_CommandNeedsErrorReply(UART_Command_t cmd);
 
 static void handle_write_bank_command(UART_Command_t cmd, uint8_t cmd_data_len,
                                       uint16_t cmd_addr, uint8_t* cmd_data);
@@ -238,7 +249,6 @@ static void pending_reply_finish(void);
 static void UART_TransmitDMA(UartTxStr_t *TxStr);
 
 static uint8_t stream_build_frame(UartTxStr_t *out);
-static uint8_t stream_is_finished(void);
 static uint8_t is_spi_ch_selection_allowed(uint8_t mode);
 
 /*==========================================================================*/
@@ -261,10 +271,7 @@ static TxQueue_t tx_queue;
 
 /* Reply frame bound to a specific reply-command. */
 static UartTxStr_t pending_reply;
-static uint8_t     pending_reply_active = 0;
-
-static uint8_t write_pending = 0;
-static UART_Command_t pending_write_command;
+static CmdState_t cmd_state = CMD_STATE_IDLE;
 
 /* RX DMA buffer and helpers. */
 static volatile uint8_t usb_rx_buffer[RX_BUFFER_SIZE];
@@ -296,19 +303,22 @@ static volatile uint16_t uart_rx_frame_end = 0;
 /*==========================================================================*/
 
 /*!
- * @brief Returns 1 if the command expects a reply from the firmware.
+ * @brief Returns 1 if the firmware must send an error frame to the host
+ *        when this command fails.
  *
  * @param[in] cmd Command code.
- * @return 1 if a reply frame must be sent to the host.
- * @return 0 if the command is silent (FlashTool configuration).
+ * @return 1 if an error frame must be sent on failure.
+ * @return 0 if the command is silent (including on failure).
  */
-static uint8_t UART_CommandHasReply(UART_Command_t cmd)
+static uint8_t UART_CommandNeedsErrorReply(UART_Command_t cmd)
 {
     uint8_t has_reply = 1;
 
     switch (cmd)
     {
-        case UART_COMMAND_CHANGE_MODE:
+		case UART_COMMAND_WRITE_BANK:
+		case UART_COMMAND_RUN_PROGRAM:
+		case UART_COMMAND_WRITE_CRC:
         case UART_COMMAND_PAGE:
         case UART_COMMAND_ENC1_POWER_OFF:
         case UART_COMMAND_ENC1_POWER_ON:
@@ -438,8 +448,6 @@ static void UART_CancelStream(void)
 
     stream_mode = STREAM_NONE;
 
-    pending_reply_active = 0;
-
     TxQueue_RemoveStreamFrames();
 }
 
@@ -487,7 +495,6 @@ static void pending_reply_prepare(UART_Command_t cmd, uint16_t addr,
     pending_reply.adr_h = (uint8_t)((addr >> 8U) & 0xFFU);
     pending_reply.adr_l = (uint8_t)(addr & 0xFFU);
     pending_reply.cmd   = cmd;
-    pending_reply_active = 1;
 }
 
 /*!
@@ -495,15 +502,11 @@ static void pending_reply_prepare(UART_Command_t cmd, uint16_t addr,
  */
 static void pending_reply_finish(void)
 {
-    if (pending_reply_active)
-    {
-        if (!TxQueue_Push(&pending_reply))
-        {
-            uart_error_status.error_type = ERROR_TYPE_UART;
-			uart_error_status.error_code = UART_ERROR_QUEUE_FULL;
-        }
-        pending_reply_active = 0;
-    }
+	if (!TxQueue_Push(&pending_reply))
+	{
+		uart_error_status.error_type = ERROR_TYPE_UART;
+		uart_error_status.error_code = UART_ERROR_QUEUE_FULL;
+	}
 }
 
 /*==========================================================================*/
@@ -515,6 +518,11 @@ static void pending_reply_finish(void)
  */
 static void finalize_successful_command(void)
 {
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+	cmd_state = CMD_STATE_IDLE;
     queue_read_cnt = (uint8_t)((queue_read_cnt + 1U) % QUEUE_SIZE);
     queue_cnt--;
 }
@@ -525,7 +533,14 @@ static void finalize_successful_command(void)
  */
 static void abort_current_command(UART_Command_t cmd)
 {
-    if (UART_CommandHasReply(cmd))
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+
+	cmd_state = CMD_STATE_IDLE;
+
+    if (UART_CommandNeedsErrorReply(cmd))
     {
 		uart_error_status.biss_fault_state = BiSSGetFaultState();
 		UART_Error_Status_t error_status = uart_error_status;
@@ -533,7 +548,6 @@ static void abort_current_command(UART_Command_t cmd)
 		                        error_status);
     }
 
-    pending_reply_active = 0;
     queue_read_cnt = (uint8_t)((queue_read_cnt + 1U) % QUEUE_SIZE);
     queue_cnt--;
 }
@@ -567,6 +581,11 @@ static uint16_t uart_get_dma_write_pos(void)
 static void handle_write_bank_command(UART_Command_t cmd, uint8_t cmd_data_len,
 	                                  uint16_t cmd_addr, uint8_t* cmd_data)
 {
+	if (cmd_state != CMD_STATE_IDLE)
+    {
+        return;
+    }
+
     if (IsBiSSReqBusy() == BISS_BUSY) 
 	{
 		return;
@@ -647,6 +666,11 @@ static void handle_change_mode_command(uint8_t mode)
 
 static void handle_page_command(UART_Command_t cmd, uint8_t data_to_page)
 {
+	if (cmd_state != CMD_STATE_IDLE)
+    {
+        return;
+    }
+
     if (IsBiSSReqBusy() == BISS_BUSY) 
 	{
 		return;
@@ -750,7 +774,7 @@ static void handle_change_ch1_mode_command(uint8_t ch1_mode)
 static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 	                                 uint8_t* cmd_data, UART_Command_t command)
 {
-	if (write_pending)
+	if (cmd_state != CMD_STATE_IDLE)
     {
         return;
     }
@@ -762,9 +786,9 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 
     if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK)
 	{
-//        finalize_successful_command();
-		pending_write_command = command;
-		write_pending = 1U;
+		/* Command will be removed from the queue by UART_CmdTask
+		* on BISS_WRITE_FINISHED or on BISS_FAULT. */
+        cmd_state = CMD_STATE_WRITE_PENDING;
         retry_cnt = 0;
     } 
 	else 
@@ -783,6 +807,11 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 	                                UART_Command_t command)
 {
+	if (cmd_state != CMD_STATE_IDLE)
+    {
+        return;
+    }
+
     if (IsBiSSReqBusy() == BISS_BUSY) 
 	{
 		return;
@@ -792,7 +821,9 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 
     if (BiSSRequestRead(cmd_addr, cmd_data_len, pending_reply.Buf) == BISS_REQ_OK)
 	{
-        finalize_successful_command();
+		/* Command will be removed from the queue by UART_CmdTask
+		* on BISS_READ_FINISHED or on BISS_FAULT. */
+		cmd_state = CMD_STATE_READ_PENDING;
         retry_cnt = 0;
     } 
 	else 
@@ -906,12 +937,25 @@ static void handle_read_enc2_current_command(uint8_t cmd_data_len, UART_Command_
 static void prepare_encoder_ab_spi_reading(uint16_t cmd_addr, 
 	                                       UART_Command_t command)
 {
-//    pending_reply_prepare(command, 0, UART_ANGLE_TWO_ENC_AB_UART_BUF_SIZE);
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+	
+	uint32_t requested = (uint32_t)cmd_addr + 1U;
+
+    if (requested > STREAM_MAX_FRAMES)
+    {
+        uart_error_status.error_type = ERROR_TYPE_UART;
+        uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+        abort_current_command(command);
+        return;
+    }
+
 	pending_reply.cmd    = command;
     pending_reply.len    = UART_ANGLE_TWO_ENC_AB_UART_BUF_SIZE;
     pending_reply.adr_h  = 0;
     pending_reply.adr_l  = 0;
-    pending_reply_active = 0;
 	
     ReadingStrRenishaw.len = cmd_addr + 1U;
     ReadingStrRenishaw.fifo_current_ptr = 0;
@@ -920,6 +964,7 @@ static void prepare_encoder_ab_spi_reading(uint16_t cmd_addr,
     ReadingStrEnc2.fifo_current_ptr = 0;
     ReadingStrEnc2.fifo_start_ptr = 0;
     ReadingStrEnc2.tol_cnt = 0;
+	
     queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
     queue_cnt--;
     stream_mode = STREAM_AB_SPI;
@@ -928,12 +973,25 @@ static void prepare_encoder_ab_spi_reading(uint16_t cmd_addr,
 static void prepare_encoder_ab_uart_reading(uint16_t cmd_addr,
 	                                        UART_Command_t command)
 {
-//    pending_reply_prepare(command, 0, UART_ANGLE_TWO_ENC_AB_UART_BUF_SIZE);
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+
+	uint32_t requested = (uint32_t)cmd_addr + 1U;
+
+    if (requested > STREAM_MAX_FRAMES)
+    {
+        uart_error_status.error_type = ERROR_TYPE_UART;
+        uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+        abort_current_command(command);
+        return;
+    }
+
 	pending_reply.cmd    = command;
     pending_reply.len    = UART_ANGLE_TWO_ENC_AB_UART_BUF_SIZE;
     pending_reply.adr_h  = 0;
     pending_reply.adr_l  = 0;
-    pending_reply_active = 0;
 
     ReadingStrRenishaw.len = cmd_addr + 1U;
     ReadingStrRenishaw.fifo_current_ptr = 0;
@@ -942,6 +1000,7 @@ static void prepare_encoder_ab_uart_reading(uint16_t cmd_addr,
     ReadingStrEnc2.fifo_current_ptr = 0;
     ReadingStrEnc2.fifo_start_ptr = 0;
     ReadingStrEnc2.tol_cnt = 0;
+	
     queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
     queue_cnt--;
     stream_mode = STREAM_AB_UART;
@@ -950,12 +1009,25 @@ static void prepare_encoder_ab_uart_reading(uint16_t cmd_addr,
 static void prepare_encoder_spi_spi_reading(uint16_t cmd_addr,
 	                                        UART_Command_t command)
 {
-//    pending_reply_prepare(command, 0, UART_ANGLE_TWO_ENC_BUF_SIZE);
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+
+	uint32_t requested = (uint32_t)cmd_addr + 1U;
+
+    if (requested > STREAM_MAX_FRAMES)
+    {
+        uart_error_status.error_type = ERROR_TYPE_UART;
+        uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+        abort_current_command(command);
+        return;
+    }
+
 	pending_reply.cmd    = command;
     pending_reply.len    = UART_ANGLE_TWO_ENC_BUF_SIZE;
     pending_reply.adr_h  = 0;
     pending_reply.adr_l  = 0;
-    pending_reply_active = 0;
 
     ReadingStrEnc1.len = cmd_addr + 1U;
     ReadingStrEnc1.fifo_current_ptr = 0;
@@ -965,6 +1037,7 @@ static void prepare_encoder_spi_spi_reading(uint16_t cmd_addr,
     ReadingStrEnc2.fifo_current_ptr = 0;
     ReadingStrEnc2.fifo_start_ptr = 0;
     ReadingStrEnc2.tol_cnt = 0;
+
     queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
     queue_cnt--;
     stream_mode = STREAM_SPI_SPI;
@@ -973,12 +1046,25 @@ static void prepare_encoder_spi_spi_reading(uint16_t cmd_addr,
 static void prepare_encoder_spi_reading(uint16_t cmd_addr,
 	                                    UART_Command_t command)
 {
-//    pending_reply_prepare(command, 0, UART_ANGLE_BUF_SIZE);
+	if (queue_cnt == 0)
+    {
+        return;
+    }
+
+	uint32_t requested = (uint32_t)cmd_addr + 1U;
+
+    if (requested > STREAM_MAX_FRAMES)
+    {
+        uart_error_status.error_type = ERROR_TYPE_UART;
+        uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+        abort_current_command(command);
+        return;
+    }
+
 	pending_reply.cmd    = command;
     pending_reply.len    = UART_ANGLE_BUF_SIZE;
     pending_reply.adr_h  = 0;
     pending_reply.adr_l  = 0;
-    pending_reply_active = 0;
 
     if (BiSS_SPI_Ch == BISS_SPI_CH_1)
 	{
@@ -994,6 +1080,7 @@ static void prepare_encoder_spi_reading(uint16_t cmd_addr,
         ReadingStrEnc2.fifo_start_ptr = 0;
         ReadingStrEnc2.tol_cnt = 0;
     }
+
     queue_read_cnt = (queue_read_cnt + 1U) % QUEUE_SIZE;
     queue_cnt--;
     stream_mode = STREAM_SPI;
@@ -1016,23 +1103,24 @@ static uint8_t is_spi_ch_selection_allowed(uint8_t mode)
     }
 }
 
+
 static void handle_run_command_state(void)
 {
-    if (queue_cnt == 0U)
+    if (queue_cnt == 0)
 	{
 		return;
 	}
+	
+	if (cmd_state != CMD_STATE_IDLE)
+    {
+        return;
+    }
 
     uint8_t        cmd_data_len = CommandQueue[queue_read_cnt].len;
     uint16_t       cmd_addr     = CommandQueue[queue_read_cnt].addr;
     UART_Command_t command      = CommandQueue[queue_read_cnt].cmd;
     uint8_t       *cmd_data     = CommandQueue[queue_read_cnt].data;
-
-//    if (UART_CommandHasReply(command))
-//	{
-//        pending_reply_prepare(command, cmd_addr, cmd_data_len);
-//    }
-
+	
     switch (command)
 	{
 		case UART_COMMAND_WRITE_BANK:
@@ -1046,14 +1134,23 @@ static void handle_run_command_state(void)
 				uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
 				abort_current_command(command);
 			} 
-			else if (IsBiSSReqBusy() == BISS_BUSY) 
+			else if (IsBiSSReqBusy() != BISS_REQ_OK) // BISS_BUSY) 
 			{
+				uart_error_status.error_type = ERROR_TYPE_BISS;
+				uart_error_status.error_code = UART_ERROR_BISS;
+				abort_current_command(command);
 			}
 			else 
 			{
 				handle_change_mode_command(cmd_data[0]);
 				finalize_successful_command();
 			}
+		break;
+			
+		case UART_COMMAND_RUN_PROGRAM:
+			/* RUN_PROGRAM is a bootloader command. In main FW it is a no-op:
+			* the device is already running the main firmware. Accept silently. */
+			finalize_successful_command();
 		break;
 
 		case UART_COMMAND_PAGE:
@@ -1444,13 +1541,13 @@ static void UART_RxTask(void)
 	UART_Command_t command;
 	UART_Error_Status_t parse_error;
 	
-	if (uart_rx_frame_ready == 0)
-    {
-        return;
-    }
-	
     primask = __get_PRIMASK();
     __disable_irq();
+	if (uart_rx_frame_ready == 0)
+    {
+		__set_PRIMASK(primask);
+        return;
+    }
     frame_end = uart_rx_frame_end;
     uart_rx_frame_ready = 0;
     __set_PRIMASK(primask);
@@ -1537,8 +1634,6 @@ static void UART_RxTask(void)
 		uart_error_status.biss_fault_state = BiSSGetFaultState();
 		parse_error = uart_error_status;
 		UART_QueueErrorResponse(cmd_addr, command, parse_error);
-//        dma_rx_cnt = (uint16_t)((dma_rx_cnt + uart_expected_length)
-//		                         % RX_BUFFER_SIZE);
 		dma_rx_cnt = frame_end;
         return;
     }
@@ -1566,6 +1661,18 @@ static void UART_RxTask(void)
                                                  | (uint16_t)hex_line_buffer[2]);
     command = (UART_Command_t)hex_line_buffer[3];
     uint8_t *cmd_data = &hex_line_buffer[4];
+	
+	/* --- NRST is handled outside the command queue ---
+     * If the queue is full (BISS_BUSY deadlock), a normal command never
+     * reaches the dispatcher. NRST must bypass the queue and reset the
+     * MCU immediately so the host can recover. */
+    if (command == UART_COMMAND_NRST)
+    {
+        __disable_irq();
+        __DSB();
+        __ISB();
+        NVIC_SystemReset();
+    }
 
     if (EnqueueCommand(command, cmd_addr, cmd_data_len, cmd_data) != QUEUE_OK)
 	{
@@ -1580,59 +1687,69 @@ static void UART_RxTask(void)
 
 static void UART_CmdTask(void)
 {
-    if (pending_reply_active)
-	{
-        BiSSExternalState_t st = IsBiSSReqBusy();
-        if (st == BISS_READ_FINISHED || st == BISS_WRITE_FINISHED)
-		{
-            pending_reply_finish();
-            BiSSResetExternalState();
-        }
-		else if (st == BISS_FAULT)
-		{
-			uart_error_status.error_type = ERROR_TYPE_BISS;
-            uart_error_status.error_code = UART_ERROR_BISS;
-			abort_current_command(pending_reply.cmd);
-//			pending_reply_finish();
-            BiSSResetExternalState();
-        }
-        return;
-    }
-	
-	if (write_pending)
+	if (queue_cnt > QUEUE_SIZE)
     {
-        BiSSExternalState_t st = IsBiSSReqBusy();
+        queue_cnt = 0;
+        queue_read_cnt = queue_write_cnt;
+        cmd_state = CMD_STATE_IDLE;
+        stream_mode = STREAM_NONE;
 
-        if (st == BISS_WRITE_FINISHED)
-        {
-            write_pending = 0;
-            retry_cnt = 0;
-
-            BiSSResetExternalState();
-            finalize_successful_command();
-        }
-        else if (st == BISS_FAULT)
-        {
-			uart_error_status.error_type = ERROR_TYPE_BISS;
-            uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
-            uart_error_status.biss_fault_state = BiSSGetFaultState();
-
-            write_pending = 0;
-			retry_cnt = 0;
-
-            BiSSResetExternalState();
-            abort_current_command(pending_write_command);
-        }
-
+        TxQueue_RemoveStreamFrames();
         return;
     }
 
-    if ((stream_mode != STREAM_NONE) && (queue_cnt > 0U))
+	switch (cmd_state)
+    {
+        case CMD_STATE_READ_PENDING:
+        {
+            BiSSExternalState_t st = IsBiSSReqBusy();
+
+            if (st == BISS_READ_FINISHED)
+            {
+                pending_reply_finish();
+                finalize_successful_command();
+                BiSSResetExternalState();
+            }
+            else if (st == BISS_FAULT)
+            {
+                uart_error_status.error_type = ERROR_TYPE_BISS;
+                uart_error_status.error_code = UART_ERROR_BISS;
+                abort_current_command(CommandQueue[queue_read_cnt].cmd);
+                BiSSResetExternalState();
+            }
+        return;
+        }
+
+        case CMD_STATE_WRITE_PENDING:
+        {
+            BiSSExternalState_t st = IsBiSSReqBusy();
+
+            if (st == BISS_WRITE_FINISHED)
+            {
+                finalize_successful_command();
+                BiSSResetExternalState();
+            }
+            else if (st == BISS_FAULT)
+            {
+                uart_error_status.error_type = ERROR_TYPE_BISS;
+                uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
+                abort_current_command(CommandQueue[queue_read_cnt].cmd);
+                BiSSResetExternalState();
+            }
+        return;
+        }
+
+        case CMD_STATE_IDLE:
+        default:
+        break;
+    }
+
+    if ((stream_mode != STREAM_NONE) && (queue_cnt > 0))
 	{
 		UART_CancelStream();
 	}
 
-    if (queue_cnt > 0U)
+    if (queue_cnt > 0)
 	{
         handle_run_command_state();
     }
@@ -1826,7 +1943,6 @@ static void UART_StreamTask(void)
     if (finished)
 	{
         stream_mode = STREAM_NONE;
-        pending_reply_active = 0;
         return;
     }
 
@@ -2015,8 +2131,10 @@ static void LPUART1_Config(void)
 	LL_LPUART_Enable(LPUART);
 
     (void)memset(&tx_queue, 0, sizeof(tx_queue));
-    
-	pending_reply_active = 0;
+	(void)memset((void *)usb_rx_buffer, 0, sizeof(usb_rx_buffer));
+	(void)memset((void *)usb_tx_buffer, 0, sizeof(usb_tx_buffer));
+
+	cmd_state = CMD_STATE_IDLE;
     stream_mode = STREAM_NONE;
 	uart_rx_frame_ready = 0;
     uart_rx_frame_end = 0;
@@ -2049,7 +2167,7 @@ void LPUART_RX_IRQHandler(void)
 
         if (frame_len >= HEXLEN_ADR_CMD_CRC_LEN) 
         {
-            uint8_t expected = usb_rx_buffer[dma_rx_cnt] + HEXLEN_ADR_CMD_CRC_LEN;
+            uint16_t expected = (uint16_t)usb_rx_buffer[dma_rx_cnt] + HEXLEN_ADR_CMD_CRC_LEN;
             if (frame_len >= expected) 
             {
                 uart_rx_frame_end = current_pos;
