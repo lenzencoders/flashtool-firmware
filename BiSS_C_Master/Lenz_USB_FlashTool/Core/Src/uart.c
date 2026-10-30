@@ -320,13 +320,12 @@ static uint8_t UART_CommandNeedsErrorReply(UART_Command_t cmd)
 		case UART_COMMAND_RUN_PROGRAM:
 		case UART_COMMAND_WRITE_CRC:
         case UART_COMMAND_PAGE:
-        case UART_COMMAND_ENC1_POWER_OFF:
-        case UART_COMMAND_ENC1_POWER_ON:
-        case UART_COMMAND_SELECT_SPI_CH:
+//        case UART_COMMAND_ENC1_POWER_OFF:
+//        case UART_COMMAND_ENC1_POWER_ON:
         case UART_COMMAND_ENC2_POWER_OFF:
         case UART_COMMAND_ENC2_POWER_ON:
-        case UART_COMMAND_CHANGE_CH1_MODE:
-        case UART_COMMAND_CHANGE_CURRENT_SENSOR_MODE:
+//        case UART_COMMAND_CHANGE_CH1_MODE:
+//        case UART_COMMAND_CHANGE_CURRENT_SENSOR_MODE:
         case UART_COMMAND_NRST:
         case UART_COMMAND_REBOOT_TO_BL:
             has_reply = 0;
@@ -1124,7 +1123,8 @@ static void handle_run_command_state(void)
     switch (command)
 	{
 		case UART_COMMAND_WRITE_BANK:
-			handle_write_bank_command(command, cmd_data_len, cmd_addr, cmd_data);
+			finalize_successful_command();
+//			handle_write_bank_command(command, cmd_data_len, cmd_addr, cmd_data);
 		break;
 
 		case UART_COMMAND_CHANGE_MODE:
@@ -1134,12 +1134,12 @@ static void handle_run_command_state(void)
 				uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
 				abort_current_command(command);
 			} 
-			else if (IsBiSSReqBusy() != BISS_REQ_OK) // BISS_BUSY) 
-			{
-				uart_error_status.error_type = ERROR_TYPE_BISS;
-				uart_error_status.error_code = UART_ERROR_BISS;
-				abort_current_command(command);
-			}
+//			else if ((IsBiSSReqBusy() == BISS_WRITE_FINISHED) || (IsBiSSReqBusy() == BISS_READ_FINISHED)) // BISS_BUSY) 
+//			{
+//				uart_error_status.error_type = ERROR_TYPE_BISS;
+//				uart_error_status.error_code = UART_ERROR_BISS;
+//				abort_current_command(command);
+//			}
 			else 
 			{
 				handle_change_mode_command(cmd_data[0]);
@@ -1152,18 +1152,23 @@ static void handle_run_command_state(void)
 			* the device is already running the main firmware. Accept silently. */
 			finalize_successful_command();
 		break;
+		
+		case UART_COMMAND_WRITE_CRC:
+			finalize_successful_command();
+		break;
 
 		case UART_COMMAND_PAGE:
-			if (cmd_data_len != 1U)
-			{
-				uart_error_status.error_type = ERROR_TYPE_UART;
-				uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
-				abort_current_command(command);
-			} 
-			else 
-			{
-				handle_page_command(command, cmd_data[0]);
-			}
+			finalize_successful_command();
+//			if (cmd_data_len != 1U)
+//			{
+//				uart_error_status.error_type = ERROR_TYPE_UART;
+//				uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+//				abort_current_command(command);
+//			} 
+//			else 
+//			{
+//				handle_page_command(command, cmd_data[0]);
+//			}
 		break;
 
 		case UART_COMMAND_ENC1_POWER_OFF:
@@ -1477,7 +1482,8 @@ static void handle_run_command_state(void)
 		break;
 
 		case UART_COMMAND_READ_ANGLE_ENC_SPI:
-			prepare_encoder_spi_reading(cmd_addr, command);
+			finalize_successful_command();
+//			prepare_encoder_spi_reading(cmd_addr, command);  // TODO: abort_current_command
 		break;
 
 		case UART_COMMAND_NRST:
