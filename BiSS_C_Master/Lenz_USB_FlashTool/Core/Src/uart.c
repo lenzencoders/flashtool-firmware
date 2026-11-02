@@ -788,19 +788,7 @@ static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 		/* Command will be removed from the queue by UART_CmdTask
 		* on BISS_WRITE_FINISHED or on BISS_FAULT. */
         cmd_state = CMD_STATE_WRITE_PENDING;
-        retry_cnt = 0;
     } 
-	else 
-	{
-        retry_cnt++;
-        if (retry_cnt >= MAX_RETRY)
-		{
-			uart_error_status.error_type = ERROR_TYPE_BISS;
-            uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
-            abort_current_command(command);
-            retry_cnt = 0;
-        }
-    }
 }
 
 static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
@@ -823,19 +811,7 @@ static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr,
 		/* Command will be removed from the queue by UART_CmdTask
 		* on BISS_READ_FINISHED or on BISS_FAULT. */
 		cmd_state = CMD_STATE_READ_PENDING;
-        retry_cnt = 0;
     } 
-	else 
-	{
-        retry_cnt++;
-        if (retry_cnt >= MAX_RETRY) 
-		{
-			uart_error_status.error_type = ERROR_TYPE_BISS;
-            uart_error_status.error_code = UART_ERROR_BISS_READ_FAULT;
-            abort_current_command(command);
-            retry_cnt = 0;
-        }
-    }
 }
 
 static void handle_write_read_enc_usart2_command(uint8_t cmd_data_len,
