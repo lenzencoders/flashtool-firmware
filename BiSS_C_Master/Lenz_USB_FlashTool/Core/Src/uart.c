@@ -746,7 +746,15 @@ static void handle_run_command_state(void) {
 				}
 				else
 				{
-					handle_change_rs485_address(cmd_data[cmd_data_len-1]);
+					if(Current_Mode == BISS_MODE_AB_UART)
+					{
+						handle_change_rs485_address(cmd_data[cmd_data_len-1]);
+					}
+					else
+					{
+						uart_error_status.error_code = UART_ERROR_INVALID_MODE;
+						abort_current_command();
+					}
 				}
 				break;
 					
