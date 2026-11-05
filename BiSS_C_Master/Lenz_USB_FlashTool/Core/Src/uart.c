@@ -68,6 +68,7 @@ typedef enum{
 	UART_ERROR_LEN_IS_NOT_CORRECT = 0x07U,
 	UART_ERROR_INVALID_CMD = 0x08U,
 	UART_ERROR_INVALID_MODE = 0x09U,
+	UART_ERROR_INVALID_PARAM = 0x10U,
 }UART_Error_t;
 
 typedef struct {
@@ -396,6 +397,19 @@ static void handle_read_angle_packet_enc_spi_instant_command(uint8_t cmd_data_le
 	}
 }
 
+
+static void handle_change_rs485_address(uint8_t address)
+{
+	if (!SetRS485Address(address))
+	{
+        uart_error_status.error_code = UART_ERROR_INVALID_PARAM;
+        abort_current_command();
+        return;
+    }
+	finalize_successful_command();
+}
+
+
 static void handle_change_current_sensor_mode_command(uint8_t current_mode) {
 	switch (current_mode) {
 		case 0:
@@ -723,6 +737,18 @@ static void handle_run_command_state(void) {
 				handle_read_angle_packet_enc_spi_instant_command(cmd_data_len, command);
 				finalize_successful_command();
 				break;
+			
+			case UART_COMMAND_CHANGE_RS485_ADR:
+				if(cmd_data_len > 1)
+				{
+					uart_error_status.error_code = UART_ERROR_LEN_IS_NOT_CORRECT;
+					abort_current_command();
+				}
+				else
+				{
+					handle_change_rs485_address(cmd_data[cmd_data_len-1]);
+				}
+				break;
 					
 			case UART_COMMAND_READ_ANGLE_TWO_ENC_AB_SPI:
 				prepare_encoder_ab_spi_reading(cmd_addr, command);
@@ -979,13 +1005,17 @@ static void handle_abort_state(void) {
 			uart_flush_rx();
 			break;
 		
+		case UART_ERROR_INVALID_CMD:
+			uart_error_status.error_type = ERROR_TYPE_UART;
+			uart_flush_rx();
+			break;
+		
 		case UART_ERROR_INVALID_MODE:
 			uart_error_status.error_type = ERROR_TYPE_UART;
 			break;
 		
-		case UART_ERROR_INVALID_CMD:
+		case UART_ERROR_INVALID_PARAM:
 			uart_error_status.error_type = ERROR_TYPE_UART;
-			uart_flush_rx();
 			break;
 		
 		default:
