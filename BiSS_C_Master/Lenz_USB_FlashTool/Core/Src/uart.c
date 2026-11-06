@@ -36,7 +36,13 @@
 #define PAGE_ADDR       						0x18U
 #define BSEL_ADDR		    					0x40U
 #define FIRST_USER_BANK 						0x05U
+
 #define BISS_ABORT_CNT_CYCLES 					14U		/* Cycles to abort control data frame */
+#define BISS_TASK_FREQUENCY_HZ    				30000U
+#define BISS_BUSY_TIMEOUT_MS     				100U
+#define BISS_BUSY_TIMEOUT_TICKS \
+    ((BISS_TASK_FREQUENCY_HZ * BISS_BUSY_TIMEOUT_MS) / 1000U)
+
 
 typedef enum{
 	ERROR_TYPE_NONE = 0x00,
@@ -69,6 +75,7 @@ typedef enum{
 	UART_ERROR_INVALID_CMD = 0x08U,
 	UART_ERROR_INVALID_MODE = 0x09U,
 	UART_ERROR_INVALID_PARAM = 0x10U,
+	UART_ERROR_BISS_TIMEOUT = 0x11U,
 }UART_Error_t;
 
 typedef struct {
@@ -140,6 +147,9 @@ uint8_t queue_write_cnt = 0;
 uint8_t queue_cnt = 0;
 uint8_t retry_cnt = 0;
 
+static uint32_t biss_busy_start_tick = 0;
+static uint8_t biss_busy_wait_active = 0;
+
 
 static QUEUE_Status_t EnqueueCommand(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data);
 static QUEUE_Status_t EnqueueCommandToBegining(UART_Command_t cmd, uint16_t addr, uint8_t len,	uint8_t *data);
@@ -174,7 +184,37 @@ static void handle_read_uart_error_status(uint8_t cmd_data_len, UART_Command_t c
 static void reset_uart_error_status(void);
 static inline void uart_flush_rx(void);
 static inline uint16_t uart_get_dma_write_pos(void);
+static uint8_t wait_for_biss_bus(void);
 
+
+static uint8_t wait_for_biss_bus(void)
+{
+    if (IsBiSSReqBusy() != BISS_BUSY)
+    {
+        biss_busy_wait_active = 0;
+        return 1U;
+    }
+
+    if (!biss_busy_wait_active)
+    {
+        biss_busy_start_tick = BISS_TaskTick;
+        biss_busy_wait_active = 1U;
+        return 0;
+    }
+
+    if ((uint32_t)(BISS_TaskTick - biss_busy_start_tick) >=
+        BISS_BUSY_TIMEOUT_TICKS)
+    {
+        biss_busy_wait_active = 0;
+
+        uart_error_status.error_code = UART_ERROR_BISS_TIMEOUT;
+        abort_current_command();
+
+        return 0;
+    }
+
+    return 0;
+}
 
 static void finalize_successful_command(void) {
 	UART_State = UART_STATE_IDLE;
@@ -319,39 +359,61 @@ static void handle_change_ch1_mode_command(uint8_t ch1_mode) {
 	}
 }
 
-static void handle_write_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, uint8_t* cmd_data) {
-	if (IsBiSSReqBusy() != BISS_BUSY) {
-		if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK) {
-			finalize_successful_command();
+static void handle_write_reg_command(
+	uint8_t cmd_data_len,
+    uint16_t cmd_addr,
+    uint8_t* cmd_data)
+{
+	if (!wait_for_biss_bus())
+    {
+        return;
+    }
+
+	if (BiSSRequestWrite(cmd_addr, cmd_data_len, cmd_data) == BISS_REQ_OK)
+	{
+		finalize_successful_command();
+		retry_cnt = 0;
+	}
+	else
+	{
+		retry_cnt++;
+		if (retry_cnt >= MAX_RETRY)
+		{
+			uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
+			UART_State = UART_STATE_ABORT;
 			retry_cnt = 0;
-		} else {
-			retry_cnt++;
-			if (retry_cnt >= MAX_RETRY) {
-				uart_error_status.error_code = UART_ERROR_BISS_WRITE_FAULT;
-				UART_State = UART_STATE_ABORT;
-				retry_cnt = 0;
-			}
 		}
 	}
 }
 
-static void handle_read_reg_command(uint8_t cmd_data_len, uint16_t cmd_addr, UART_Command_t command) {
-	if (IsBiSSReqBusy() != BISS_BUSY) { 
-		UART_TX.cmd = command;
-		UART_TX.len = cmd_data_len;
-		UART_TX.adr_h = (cmd_addr >> 8U) & 0xFFU;
-		UART_TX.adr_l = cmd_addr & 0xFFU;
-		
-		if (BiSSRequestRead(cmd_addr, cmd_data_len, UART_TX.Buf) == BISS_REQ_OK) {
-			finalize_successful_command();
+static void handle_read_reg_command(
+    uint8_t cmd_data_len,
+    uint16_t cmd_addr,
+    UART_Command_t command)
+{
+	if (!wait_for_biss_bus())
+    {
+        return;
+    }
+
+	UART_TX.cmd = command;
+	UART_TX.len = cmd_data_len;
+	UART_TX.adr_h = (cmd_addr >> 8U) & 0xFFU;
+	UART_TX.adr_l = cmd_addr & 0xFFU;
+	
+	if (BiSSRequestRead(cmd_addr, cmd_data_len, UART_TX.Buf) == BISS_REQ_OK)
+	{
+		finalize_successful_command();
+		retry_cnt = 0;
+	}
+	else
+	{
+		retry_cnt++;
+		if (retry_cnt >= MAX_RETRY)
+		{
+			uart_error_status.error_code = UART_ERROR_BISS_READ_FAULT;
+			UART_State = UART_STATE_ABORT;
 			retry_cnt = 0;
-		} else {
-			retry_cnt++;
-			if (retry_cnt >= MAX_RETRY) {
-				uart_error_status.error_code = UART_ERROR_BISS_READ_FAULT;
-				UART_State = UART_STATE_ABORT;
-				retry_cnt = 0;
-			}
 		}
 	}
 }
@@ -977,60 +1039,65 @@ static void handle_reading_encoder_spi_state(void) {
 }
 
 static void handle_abort_state(void) {
-	switch(uart_error_status.error_code) {
+	switch (uart_error_status.error_code)
+	{
 		case UART_ERROR_CRC:
 			uart_error_status.error_type = ERROR_TYPE_UART;
 			uart_flush_rx();
-			break;
+		break;
 				
 		case UART_ERROR_QUEUE_FULL:
 			uart_error_status.error_type = ERROR_TYPE_UART;
-			break;
+		break;
 				
 		case UART_ERROR_BISS:
 			uart_error_status.error_type = ERROR_TYPE_BISS;
 			uart_error_status.biss_fault_state = BiSSGetFaultState();
 			BiSSResetExternalState();  // reset BiSS.ExternalState
-			break;
+		break;
 		
 		case UART_ERROR_BISS_WRITE_FAULT:
 			uart_error_status.error_type = ERROR_TYPE_BISS;
 			uart_error_status.biss_fault_state = BiSSGetFaultState();
-			break;
+		break;
 		
 		case UART_ERROR_BISS_READ_FAULT:
 			uart_error_status.error_type = ERROR_TYPE_BISS;
 			uart_error_status.biss_fault_state = BiSSGetFaultState();
-			break;
+		break;
 				
 		case UART_ERROR_LEN_DATA_IS_ZERO:
 			uart_error_status.error_type = ERROR_TYPE_UART;
 			uart_flush_rx();
-			break;
+		break;
 		
 		case UART_ERROR_LEN_IS_NOT_CORRECT:
 			uart_error_status.error_type = ERROR_TYPE_UART;
 			uart_flush_rx();
-			break;
+		break;
 		
 		case UART_ERROR_INVALID_CMD:
 			uart_error_status.error_type = ERROR_TYPE_UART;
 			uart_flush_rx();
-			break;
+		break;
 		
 		case UART_ERROR_INVALID_MODE:
 			uart_error_status.error_type = ERROR_TYPE_UART;
-			break;
+		break;
 		
 		case UART_ERROR_INVALID_PARAM:
 			uart_error_status.error_type = ERROR_TYPE_UART;
-			break;
+		break;
+		
+		case UART_ERROR_BISS_TIMEOUT:
+			uart_error_status.error_type = ERROR_TYPE_UART;
+		break;
 		
 		default:
 			__NOP();
 			__NOP();
 			__NOP();
-			break;
+		break;
 	}
 
 	UART_State = UART_STATE_IDLE;
