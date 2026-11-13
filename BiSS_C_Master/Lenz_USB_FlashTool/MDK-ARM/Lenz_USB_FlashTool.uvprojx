@@ -395,9 +395,19 @@
           <GroupName>Application/User/Core</GroupName>
           <Files>
             <File>
+              <FileName>hw_cfg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Core\Inc\hw_cfg.h</FilePath>
+            </File>
+            <File>
               <FileName>uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Core\Src\uart.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Core\Inc\uart.h</FilePath>
             </File>
             <File>
               <FileName>main.c</FileName>
@@ -699,9 +709,19 @@
               <FilePath>..\..\lib\BiSS_C_Master\biss_c_master_hal.c</FilePath>
             </File>
             <File>
+              <FileName>biss_c_master_hal.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\lib\BiSS_C_Master\biss_c_master_hal.h</FilePath>
+            </File>
+            <File>
               <FileName>biss_c_master.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\lib\BiSS_C_Master\biss_c_master.c</FilePath>
+            </File>
+            <File>
+              <FileName>biss_c_master.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\lib\BiSS_C_Master\biss_c_master.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -25,11 +25,25 @@
 
 #define SPI_CR1_BISS_CDM    SPI_CR1_SSI | SPI_CR1_SPE | SPI_CR1_MSTR | SPI_CR1_SSM | ((0x5U << SPI_CR1_BR_Pos) & SPI_CR1_BR_Msk)
 #define SPI_CR1_BISS_nCDM   SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_CR1_BISS_CDM
-
 #define SPI_CR2_BISS_CFG		SPI_CR2_RXDMAEN |SPI_CR2_TXDMAEN | SPI_CR2_FRXTH | (0x7U << SPI_CR2_DS_Pos)
-static volatile enum {RS485_ADR1, RS485_ADR2} RS485_ADR = RS485_ADR2;
+
+typedef enum {
+	RS485_ADR0 = 0,
+    RS485_ADR1, 
+    RS485_ADR2,
+    RS485_ADR3,
+    RS485_ADR4,
+    RS485_ADR5,
+    RS485_ADR6,
+    RS485_ADR7
+} RS485_ADR_t;
+
+static volatile RS485_ADR_t RS485_ADR = RS485_ADR2;
+
 static volatile uint8_t adr_reset_cou = 0;
+
 typedef enum{
+	RS485_CDM_ADR0_REQ = 0xE0U,
 	RS485_CDM_ADR1_REQ = 0x81U,
 	RS485_CDM_ADR2_REQ = 0x22U,
 	RS485_CDM_ADR3_REQ = 0x43U,
@@ -37,6 +51,7 @@ typedef enum{
 	RS485_CDM_ADR5_REQ = 0x65U,
 	RS485_CDM_ADR6_REQ = 0xC6U,
 	RS485_CDM_ADR7_REQ = 0xA7U,
+	RS485_nCDM_ADR0_REQ = 0xD0U,
 	RS485_nCDM_ADR1_REQ = 0xB1U,
 	RS485_nCDM_ADR2_REQ = 0x12U,
 	RS485_nCDM_ADR3_REQ = 0x73U,
@@ -215,176 +230,262 @@ static void BiSS2_SPI_CDM_Req(void){
 
 
 void BissRequest_CDM(void){
-	switch(BISS_MODE){
+	switch (BISS_MODE)
+	{
 		case BISS_MODE_SPI:		
 			BiSS1_SPI_CDM_Req();
-			break;	
+		break;
+		
 		case BISS_MODE_UART:
 			LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 			LL_DMA_SetDataLength(DMA_BISS2_UART_RX, 4U);
 			LL_DMA_EnableChannel(DMA_BISS2_UART_RX);	 
-			switch(RS485_ADR){
+			switch (RS485_ADR)
+			{
+				case RS485_ADR0:
+					LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR0_REQ);
+				break;
+                
 				case RS485_ADR1:
-					LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR1_REQ);
-					break;
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR1_REQ);
+                break;
+                
 				case RS485_ADR2:
-					LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR2_REQ);
-					break;
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR2_REQ);
+                break;
+                
+				case RS485_ADR3:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR3_REQ);
+                break;
+                
+				case RS485_ADR4:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR4_REQ);
+                break;
+                
+				case RS485_ADR5:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR5_REQ);
+                break;
+                
+				case RS485_ADR6:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR6_REQ);
+                break;
+                
+				case RS485_ADR7:
+                    LL_USART_TransmitData8(BISS2_UART, RS485_CDM_ADR7_REQ);
+                break;
 			}
-			break;		
+		break;		
 	}		
 }
 
 void BissRequest_nCDM(void){
-	switch(BISS_MODE){
+	switch (BISS_MODE)
+	{
 		case BISS_MODE_SPI:		
 			BiSS1_SPI_nCDM_Req();
 			BiSS2_SPI_nCDM_Req();
-			break;	
+		break;
+		
 		case BISS_MODE_UART:
 			LL_DMA_DisableChannel(DMA_BISS2_UART_RX);
 			LL_DMA_SetDataLength(DMA_BISS2_UART_RX, 4U);
 			LL_DMA_EnableChannel(DMA_BISS2_UART_RX);	 
-			switch(RS485_ADR){
+			switch (RS485_ADR)
+			{
+				case RS485_ADR0:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR0_REQ);
+				break;
+				
 				case RS485_ADR1:
 					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR1_REQ);
-					break;
+				break;
+				
 				case RS485_ADR2:
 					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR2_REQ);
-					break;
+				break;
+				
+				case RS485_ADR3:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR3_REQ);
+				break;
+				
+				case RS485_ADR4:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR4_REQ);
+				break;
+				
+				case RS485_ADR5:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR5_REQ);
+				break;
+				
+				case RS485_ADR6:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR6_REQ);
+				break;
+				
+				case RS485_ADR7:
+					LL_USART_TransmitData8(BISS2_UART, RS485_nCDM_ADR7_REQ);
+				break;
 			}
-			break;		
+		break;		
 	}		
 }
 
 void BISS_Task_IRQHandler(void) {
 	LL_TIM_ClearFlag_UPDATE(BISS_Task_TIM);
-	switch(BISS_MODE){
+	switch (BISS_MODE)
+	{
 		case BISS_MODE_SPI:		
-		#ifdef CH1_SSI
+			#ifdef CH1_SSI
 			(void) BiSS1_SPI_rx;
-			uint32_t rev_temp = __REV(*(uint32_t *)&BiSS1_SPI_rx.buf[0]);		
-		
-				AngleData1.time_of_life_counter++;
-			if((rev_temp & 0xC00000) == 0x400000){
+			uint32_t rev_temp = __REV(*(uint32_t *)&BiSS1_SPI_rx.buf[0]);
+			AngleData1.time_of_life_counter++;
+			if ((rev_temp & 0xC00000) == 0x400000)
+			{
 				CRC6_State1 = CRC6_OK;
 				LED1TurnGreen();
 				AngleData1.angle_data = (rev_temp << 2) & 0xFFFF80;
 				AngleData1.time_of_life_counter++;
 			}
-			else{
+			else
+			{
 				LED1TurnRed();
 				CRC6_State1 = CRC6_FAULT;
 			}		
-			if(SSI_HALF_FREQ_FLAG > 0){
+			
+			if (SSI_HALF_FREQ_FLAG > 0)
+			{
 				SSI_HALF_FREQ_FLAG = 0;
 				BiSS1_SPI_nCDM_Req();
 			}
-			else{
+			else
+			{
 				SSI_HALF_FREQ_FLAG = 1;
 			}
-		#else
+			#else
 			BISS1_SCD = __REV(BiSS1_SPI_rx.revSCD);
-			if(BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU)){
+			if (BISS_CRC6_Calc(BISS1_SCD >> 6) == (BISS1_SCD & 0x3FU))
+			{
 				CRC6_State1 = CRC6_OK;
 				AngleData1.angle_data = BISS1_SCD >> 8;
 				AngleData1.time_of_life_counter++;
 				LED1TurnGreen();
 			}
-			else{
+			else
+			{
 				LED1TurnRed();
 				CRC6_State1 = CRC6_FAULT;
 			}			
-		#endif
+			#endif
 			BISS2_SCD = __REV(BiSS2_SPI_rx.revSCD);
-			if(BISS_CRC6_Calc(BISS2_SCD >> 6) == (BISS2_SCD & 0x3FU)){
+			if (BISS_CRC6_Calc(BISS2_SCD >> 6) == (BISS2_SCD & 0x3FU))
+			{
 				CRC6_State2 = CRC6_OK;
 				AngleData2.angle_data = BISS2_SCD >> 8;
 				AngleData2.time_of_life_counter++;
 				
-				if(((BISS2_SCD >> 6) & 0x3)== 0x3){
+				if (((BISS2_SCD >> 6) & 0x3)== 0x3)
+				{
 					LED2TurnGreen();
 				}
-				else{
+				else
+				{
 					LED2TurnRed();
 				}
 			}
-			else{
+			else
+			{
 				LED2TurnRed();
 				CRC6_State2 = CRC6_FAULT;
 			}					
-			switch(BiSS_SPI_Ch){
+			
+			switch (BiSS_SPI_Ch)
+			{
 				case BISS_SPI_CH_1:
-#ifndef CH1_SSI
-					if (BiSS_C_Master_StateMachine(BiSS1_SPI_rx.CDS) == CDM) {					
+					#ifndef CH1_SSI
+					if (BiSS_C_Master_StateMachine(BiSS1_SPI_rx.CDS) == CDM)
+					{
 						BiSS1_SPI_CDM_Req();
 					}
-					else{
+					else
+					{
 						BiSS1_SPI_nCDM_Req();
 					}
 					BiSS2_SPI_nCDM_Req();
-#endif
-					break;
+					#endif
+				break;
+				
 				case BISS_SPI_CH_2:
-					if (BiSS_C_Master_StateMachine(BiSS2_SPI_rx.CDS) == CDM) {					
+					if (BiSS_C_Master_StateMachine(BiSS2_SPI_rx.CDS) == CDM)
+					{
 						BiSS2_SPI_CDM_Req();
 					}
-					else{
+					else
+					{
 						BiSS2_SPI_nCDM_Req();
 					}	
-#ifndef CH1_SSI
+					#ifndef CH1_SSI
 					BiSS1_SPI_nCDM_Req();
-#endif
-					break;
+					#endif
+				break;
+				
 				default:
-#ifndef CH1_SSI
+					#ifndef CH1_SSI
 					BiSS1_SPI_nCDM_Req();
-#endif
+					#endif
 					BiSS2_SPI_nCDM_Req();
-					break;
+				break;
 			}
-			break;
+		break;
+		
 		case BISS_MODE_UART:		
-			if(LL_DMA_GetDataLength(DMA_BISS2_UART_RX) == 0){
-				if(BISS_CRC6_Calc(USART_rx.Data4CRC) == USART_rx.CRC6){
+			if (LL_DMA_GetDataLength(DMA_BISS2_UART_RX) == 0)
+			{
+				if (BISS_CRC6_Calc(USART_rx.Data4CRC) == USART_rx.CRC6)
+				{
 					CRC6_State1 = CRC6_OK;
 					AngleData2.angle_data = USART_rx.Pos;
 					AngleData2.time_of_life_counter++;
 					LED2TurnGreen();
 					AngleData1.angle_data += (int16_t)(LL_TIM_GetCounter(TIM_ENC) - AngleData1.angle_data) ;
 					AngleData1.time_of_life_counter++;
-
 				}
-				else{
+				else
+				{
 					CRC6_State1 = CRC6_FAULT;
-						LED2TurnRed();
-				}	
-				if (BiSS_C_Master_StateMachine(USART_CDS_last) == CDM) {
+					LED2TurnRed();
+				}
+
+				if (BiSS_C_Master_StateMachine(USART_CDS_last) == CDM)
+				{
 					BissRequest_CDM();
 					last_CDM = CDM;
 				}
-				else {
+				else
+				{
 					BissRequest_nCDM();
 					last_CDM = nCDM;
 				}	
 				USART_CDS_last = (CDS_t)USART_rx.CDS;
 				adr_reset_cou = 0;
-				
 			}
-			else{
+			else
+			{
 				LED2TurnRed();
 				adr_reset_cou++;
-				if(adr_reset_cou == 255){
-					RS485_ADR = RS485_ADR == RS485_ADR1? RS485_ADR2 : RS485_ADR1;
+				
+				if(adr_reset_cou == 255)
+				{
+					NextRS485Address();
 				}
-				if(last_CDM == CDM){
+				
+				if(last_CDM == CDM)
+				{
 					BissRequest_CDM();
 				}
-				else {
+				else
+				{
 					BissRequest_nCDM();
 				}						
 			}
-			break;
+		break;
 	}
 	// DEBUG BEGIN
 	//Test Renishaw angle data
@@ -766,3 +867,7 @@ static void MX_TIM_ENC_Init(void)
 
 }
 
+void NextRS485Address(void)
+{
+    RS485_ADR = (RS485_ADR_t)((RS485_ADR + 1U) % 8U);
+}

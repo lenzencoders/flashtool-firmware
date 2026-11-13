@@ -1,0 +1,11 @@
+*.o
+*.d
+*.axf
+*.hex
+*.map
+*.dep
+*.build_log.htm
+*.htm
+*.uvguix.*
+*.uvgui.*
+**/RTE/_*/*
